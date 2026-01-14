@@ -64,26 +64,37 @@ The specification was updated based on user-identified edge cases around depende
 
 8. **Decisions Log**: Added table documenting key decisions with rationale and alternatives noted.
 
+### Summary of Clarifications (Session 2026-01-14)
+
+| Question | Answer | Sections Updated |                                                                                                                                                    
+|----------|--------|------------------|                                                                                                                                                    
+| Config filename in Release 1 | `cdktf.json` only | FR-008, Decisions Log, Assumptions |                                                                                                   
+| Dual-dependency research approach | Pre-implementation spike | Edge Cases, Decisions Log, Assumptions |                                                                                   
+| Observability during migration | Re-use Sentry telemetry | FR-033, FR-034, Decisions Log, Assumptions |          
+
 ### Validation Summary
 
 | Category | Count | Status |
 |----------|-------|--------|
-| Functional Requirements | 32 (FR-001 to FR-032) | All testable |
+|  Functional Requirements | 34 (FR-001 to FR-034) | All testable |
 | Success Criteria | 9 (SC-001 to SC-009) | All measurable |
 | User Stories | 5 | All have acceptance scenarios |
 | Edge Cases | 10+ specific scenarios | All documented |
-| Assumptions | 8 | All documented |
-| Decisions | 3 | All logged with alternatives |
+| Assumptions | 10 | All documented |
+| Decisions | 6 | All logged with alternatives  |
+| Clarifications | 3 | All integrated | 
 
 ### Research Items Identified
 
-The following items require investigation during implementation:
+The following items MUST be investigated in a spike before main implementation (during specledger.plan phase):
 
 - [ ] JavaScript ecosystem concerns with `cdktf` + `cdktn` dual dependency coexistence
 - [ ] Symbol conflict potential between packages
 - [ ] Bundler behavior with both packages
 - [ ] JSII cross-language implications
 
+**Spike Outcome**: If fatal issues are discovered, the dual-dependency approach must be reconsidered.
+
 ---
 
-**Specification is ready for `/specledger.clarify` or `/specledger.plan`**
+**Specification is ready for `/specledger.plan`** 

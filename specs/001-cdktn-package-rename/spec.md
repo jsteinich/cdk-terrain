@@ -120,12 +120,13 @@ A developer wants to convert existing HCL Terraform configurations to CDK code u
 
 **Dual Dependency Coexistence (Transitional)**:
 - What happens when a project has both `cdktf` and `cdktn` dependencies installed? The system MUST support this transitional state and synthesize correctly. A warning MAY be displayed recommending migration to clean dependencies.
-- **Research Required**: Investigate potential JavaScript ecosystem concerns with dual package coexistence:
+- **Pre-Implementation Spike Required**: Before main implementation begins, conduct a focused spike to validate dual-dependency coexistence. The spike MUST investigate:
   - Symbol conflicts between `cdktf` and `cdktn` runtime symbols
   - Module resolution ambiguity in bundlers (webpack, esbuild, rollup)
   - Bundle size impact of including both packages
   - Type definition conflicts in TypeScript projects
   - JSII cross-language implications (Python, Java, C#, Go)
+- **Spike Outcome**: If fatal issues are discovered, the dual-dependency approach must be reconsidered before proceeding. Spike results should be documented in the implementation plan.
 
 **Provider Dependency Mixing**:
 - How does the system handle mixed provider versions where some providers (`@cdktf/provider-*`) expect `cdktf` and others (`@cdktn/provider-*`) expect `cdktn`? The package manager should resolve peer dependencies correctly; the CLI should synthesize if all peer dependencies are satisfied.
@@ -157,7 +158,7 @@ A developer wants to convert existing HCL Terraform configurations to CDK code u
 - **FR-007**: The NuGet package MUST be published as `Io.Cdktn` with namespace `Io.Cdktn`
 
 **Backward Compatibility:**
-- **FR-008**: The CLI MUST accept `cdktf.json` as the default configuration file
+- **FR-008**: The CLI MUST accept `cdktf.json` as the only configuration filename in Release 1 (no `cdktn.json` alternative)
 - **FR-009**: The CLI MUST write synthesized output to `cdktf.out/` by default
 - **FR-010**: The CLI MUST honor `CDKTF_*` environment variables
 - **FR-011**: The CLI MUST use `~/.cdktf` as the default home directory
@@ -188,6 +189,10 @@ A developer wants to convert existing HCL Terraform configurations to CDK code u
 - **FR-030**: The migration tool MUST support updating package.json (and equivalent) dependency declarations
 - **FR-031**: The migration tool SHOULD support dry-run mode to preview changes without applying them
 - **FR-032**: The migration tool SHOULD recommend switching to local provider generation (`cdktn get`) when `@cdktn/provider-*` equivalents are not yet available
+
+**Observability:**
+- **FR-033**: The CLI MUST re-use existing Sentry telemetry patterns for observability during migration
+- **FR-034**: Migration-related events (success, failure, dual-dependency detection) SHOULD be captured using existing telemetry infrastructure
 
 **Future Alternatives (Out of Scope for Release 1)**:
 - Migration tooling as a separate `@cdktn/migrate` package may be considered as an alternative approach based on contributor alignment. Benefits include: keeping CLI lean, independent iteration cycles, optional installation.
@@ -233,9 +238,19 @@ The following assumptions were made based on the RFC documents and user decision
 3. **Testing Infrastructure**: Existing CI/CD pipelines can be adapted for the renamed packages
 4. **Documentation**: Documentation and website updates are explicitly out of scope for Release 1 (will occur after packages are released)
 5. **Prebuilt Provider Strategy**: Prebuilt providers live in external repositories and will do a major version bump to adopt `cdktn` Release 1 after it ships; providers will be rebuilt without `cdktf` dependencies
-6. **Dual Dependency Coexistence**: JavaScript ecosystem allows `cdktf` and `cdktn` packages to coexist in the same project without fatal conflicts. Research is required to validate this assumption and identify any concerns.
+6. **Dual Dependency Coexistence**: JavaScript ecosystem allows `cdktf` and `cdktn` packages to coexist in the same project without fatal conflicts. A pre-implementation spike is required to validate this assumption before committing to the approach.
 7. **Migration Tooling Location**: The `cdktn migrate` command will be built into the CLI for Release 1. A separate `@cdktn/migrate` package may be considered for future releases based on community feedback.
 8. **Provider Generator Independence**: The provider generator can function correctly with only `cdktn` installed, without any implicit dependency on `cdktf` being present.
+9. **Config Filename**: Only `cdktf.json` is supported in Release 1. A `cdktn.json` alternative may be introduced in Release 2.
+10. **Telemetry Infrastructure**: Existing Sentry telemetry patterns are available and can be extended for migration observability.
+
+## Clarifications
+
+### Session 2026-01-14
+
+- Q: Should Release 1 introduce a new canonical config filename `cdktn.json` alongside legacy `cdktf.json` support? → A: `cdktf.json` only in Release 1. Simpler, avoids user confusion about which file takes precedence. New filename can be added in Release 2.
+- Q: How should the dual-dependency coexistence research be handled for Release 1? → A: Spike before implementation. Conduct a focused spike to validate dual-dependency coexistence works before main implementation. Blocks if fatal issues found.
+- Q: Should the CLI emit logs or telemetry events to help diagnose migration issues? → A: Re-use existing patterns and use of Sentry telemetry for observability during migration.
 
 ## Decisions Log
 
@@ -246,3 +261,6 @@ The following decisions were made during specification refinement:
 | Dual dependency handling | Transitional support | Allows gradual migration without blocking users on provider availability | Clean break (require full migration), Shim/adapter layer (future exploration) |
 | Prebuilt provider release | External repos, post-Release 1 | Providers live outside main repo; major bump after core ships | Bundled release, Delayed provider support |
 | Migration tool location | Built into CLI | Immediate availability, single install | Separate `@cdktn/migrate` package (noted for future) |
+| Config filename | `cdktf.json` only | Simpler, avoids precedence confusion | Both filenames with precedence rules (Release 2) |
+| Dual-dependency research | Spike before implementation | Validates assumption before committing to approach; blocks if fatal | During implementation, Defer to community |
+| Observability | Sentry telemetry | Re-use existing patterns; consistent with current codebase | Warning logs only, Opt-in telemetry, No logging |
