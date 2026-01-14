@@ -2,6 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-01-14
+**Updated**: 2026-01-14 (edge case refinement)
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -31,30 +32,57 @@
 
 ## Notes
 
-**Validation passed on first iteration.**
+**Validation passed after edge case refinement.**
 
-All checklist items pass validation:
+### Summary of Updates
 
-1. **Content Quality**: The specification focuses on WHAT packages need to be renamed and WHY (user migration, new user adoption), without specifying HOW (no code-level details).
+The specification was updated based on user-identified edge cases around dependency transitions:
 
-2. **Requirements**: All 22 functional requirements (FR-001 through FR-022) are specific, testable, and use clear language (MUST/MAY).
+1. **User Story 2**: Added dual dependency transitional support scenarios and documented alternative approaches (clean break, shim/adapter) for future exploration.
 
-3. **Success Criteria**: All 6 success criteria are measurable and technology-agnostic:
-   - SC-001: "within 10 minutes" - time-based, measurable
-   - SC-002: "zero infrastructure state drift" - measurable via comparison
-   - SC-003: "functional parity" - verifiable via testing
-   - SC-004: "same performance envelope" - measurable
-   - SC-005: "100% of CLI commands" - quantifiable
-   - SC-006: "succeed with correct dependency resolution" - verifiable
+2. **User Story 3**: Clarified that prebuilt providers live in external repositories and will do a major version bump after `cdktn` Release 1 ships.
 
-4. **Assumptions**: All reasonable defaults were documented in the Assumptions section rather than requesting clarification:
-   - Version numbering from RFC
-   - Registry access (standard assumption)
-   - Testing infrastructure adaptation
-   - Documentation out of scope (from RFC)
-   - Prebuilt provider strategy (from RFC)
+3. **User Story 4**: Emphasized that local provider generation is the clean migration path with zero `cdktf` dependencies.
 
-5. **No [NEEDS CLARIFICATION] markers**: The RFC documents provided sufficient detail to make informed decisions for all requirements.
+4. **Functional Requirements**: Added FR-023 through FR-032 covering:
+   - Provider generator clean output (no `cdktf` deps)
+   - Dual dependency transitional support
+   - Migration tooling (`cdktn migrate` command)
+
+5. **Edge Cases**: Expanded to cover:
+   - Dual dependency coexistence concerns (with research items)
+   - Provider dependency mixing scenarios
+   - Provider generator edge cases
+   - Migration tooling edge cases
+
+6. **Success Criteria**: Added SC-007 through SC-009 for:
+   - Dual dependency synthesis
+   - Clean local provider generation
+   - Migration tool functionality
+
+7. **Assumptions**: Added decisions around dual dependency support, provider release strategy, and migration tooling location.
+
+8. **Decisions Log**: Added table documenting key decisions with rationale and alternatives noted.
+
+### Validation Summary
+
+| Category | Count | Status |
+|----------|-------|--------|
+| Functional Requirements | 32 (FR-001 to FR-032) | All testable |
+| Success Criteria | 9 (SC-001 to SC-009) | All measurable |
+| User Stories | 5 | All have acceptance scenarios |
+| Edge Cases | 10+ specific scenarios | All documented |
+| Assumptions | 8 | All documented |
+| Decisions | 3 | All logged with alternatives |
+
+### Research Items Identified
+
+The following items require investigation during implementation:
+
+- [ ] JavaScript ecosystem concerns with `cdktf` + `cdktn` dual dependency coexistence
+- [ ] Symbol conflict potential between packages
+- [ ] Bundler behavior with both packages
+- [ ] JSII cross-language implications
 
 ---
 
