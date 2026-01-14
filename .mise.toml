@@ -1,5 +1,8 @@
 [tools]
-node = '18'
+node = "22"
 python = '3.11'
 go = '1.18'
 java = "prefix:corretto-20"
+
+"ubi:steveyegge/beads" = { version = "0.28.0", exe = "bd" }
+"ubi:zjrosen/perles" = "0.2.11"
