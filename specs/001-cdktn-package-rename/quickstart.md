@@ -39,16 +39,18 @@ cdktn migrate
 {
   "dependencies": {
 -   "cdktf": "^0.20.0",
-+   "cdktn": "^0.1.0",
++   "cdktn": "^0.21.0",
 -   "@cdktf/provider-aws": "^19.0.0"
-+   "@cdktn/provider-aws": "^1.0.0"
++   "@cdktn/provider-aws": "^20.0.0"
   },
   "devDependencies": {
 -   "cdktf-cli": "^0.20.0"
-+   "cdktn-cli": "^0.1.0"
++   "cdktn-cli": "^0.21.0"
   }
 }
 ```
+
+> NOTE: The CDKTN Release 1 version MUST be the next logical version CDKTF would have (this is already handled by the repository built-in release flows thanks to the mirrored git tags)
 
 **2. Update imports:**
 
@@ -86,10 +88,10 @@ npm install
 
 ```diff
 - cdktf>=0.20.0
-+ cdktn>=0.1.0
++ cdktn>=0.21.0
 
 - cdktf-cdktf-provider-aws>=19.0.0
-+ cdktn-provider-aws>=1.0.0
++ cdktn-provider-aws>=20.0.0
 ```
 
 **2. Update imports:**
@@ -117,7 +119,7 @@ pipenv install --dev
 ```diff
 require (
 -   github.com/hashicorp/terraform-cdk-go/cdktf v0.20.0
-+   github.com/open-constructs/cdk-terrain-go/cdktn v0.1.0
++   github.com/open-constructs/cdk-terrain-go/cdktn v0.21.0
 )
 ```
 
@@ -145,7 +147,7 @@ go mod tidy
 ```diff
 dependencies {
 -   implementation "com.hashicorp:cdktf:0.20.0"
-+   implementation "io.cdktn:cdktn:0.1.0"
++   implementation "io.cdktn:cdktn:0.21.0"
 }
 ```
 
@@ -171,7 +173,7 @@ dependencies {
 ```diff
 <ItemGroup>
 -   <PackageReference Include="HashiCorp.Cdktf" Version="0.20.0" />
-+   <PackageReference Include="Io.Cdktn" Version="0.1.0" />
++   <PackageReference Include="Io.Cdktn" Version="0.21.0" />
 </ItemGroup>
 ```
 
