@@ -86,7 +86,7 @@ A developer wants to generate local provider bindings using `cdktn get` for prov
 
 **Acceptance Scenarios**:
 
-1. **Given** a `cdktf.json` (or `cdktn.json`) with provider specifications, **When** the developer runs `cdktn get`, **Then** the generated provider code imports from `cdktn` (not `cdktf`) and compiles successfully.
+1. **Given** a `cdktf.json` with provider specifications, **When** the developer runs `cdktn get`, **Then** the generated provider code imports from `cdktn` (not `cdktf`) and compiles successfully.
 2. **Given** generated providers reference the core library, **When** the provider code is inspected, **Then** all internal references use the new package names while maintaining runtime compatibility.
 3. **Given** a user migrating from `@cdktf/provider-*` prebuilt providers, **When** they switch to local provider generation via `cdktn get`, **Then** the generated code has zero `cdktf` package or scope dependencies, allowing full removal of legacy packages.
 4. **Given** the provider generator outputs code, **When** the generated `package.json` (or equivalent) is inspected, **Then** it contains only `cdktn` peer dependencies with no `@cdktf/*` references.
@@ -142,7 +142,7 @@ A developer wants to convert existing HCL Terraform configurations to CDK code u
 
 **Migration Tooling**:
 - What if `cdktn migrate` is run on a project that is already fully migrated? The tool should detect this and report "no migration needed" without making changes.
-- What if migration fails partway through? The tool should provide rollback instructions or operate in a dry-run mode by default.
+- What if migration fails partway through? The tool should provide sufficient warning there is no rollback functionality and users should create checkpoints (git commit or backups) to ensure they can recover from a partial migration, the tool should operate in a dry-run mode by default.
 
 ## Requirements *(mandatory)*
 
