@@ -61,7 +61,7 @@ A developer wants to use prebuilt provider packages (e.g., AWS, Azure, GCP) with
 
 **Acceptance Scenarios**:
 
-1. **Given** a developer has a `cdktn` project, **When** they install `@cdktn/provider-aws`, **Then** the provider package resolves `cdktn` as its peer dependency and imports work correctly.
+1. **Given** a developer has a `cdktn` project and `@cdktn/provider-*` packages have been rebuilt with their post-Release 1 major version bump, **When** they install `@cdktn/provider-aws`, **Then** the provider package resolves `cdktn` as its peer dependency and imports work correctly. _(Note: Pre-Release 1 provider versions may still use `cdktf` as a peer dependency during the transitional period.)_
 2. **Given** a prebuilt provider is installed, **When** the developer uses provider resources in their stack, **Then** the synthesized Terraform JSON references the correct Terraform provider source (e.g., `hashicorp/aws`) without modification.
 3. **Given** `@cdktn/provider-*` packages are released after `cdktn` Release 1, **When** a developer adds them to their project, **Then** they have no `cdktf` peer dependency (clean dependency tree).
 
