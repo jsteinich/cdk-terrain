@@ -8,6 +8,7 @@ This guide helps existing CDKTF users migrate their projects to the community-ma
 ## Overview
 
 The migration from `cdktf` to `cdktn` involves:
+
 1. Updating package dependencies
 2. Updating import statements
 3. Optionally using the `cdktn migrate` command
@@ -38,14 +39,14 @@ cdktn migrate
 ```diff
 {
   "dependencies": {
--   "cdktf": "^0.20.0",
-+   "cdktn": "^0.21.0",
+-   "cdktf": "^0.21.0",
++   "cdktn": "^0.22.0",
 -   "@cdktf/provider-aws": "^19.0.0"
 +   "@cdktn/provider-aws": "^20.0.0"
   },
   "devDependencies": {
--   "cdktf-cli": "^0.20.0"
-+   "cdktn-cli": "^0.21.0"
+-   "cdktf-cli": "^0.21.0"
++   "cdktn-cli": "^0.22.0"
   }
 }
 ```
@@ -87,8 +88,8 @@ npm install
 **1. Update requirements.txt or Pipfile:**
 
 ```diff
-- cdktf>=0.20.0
-+ cdktn>=0.21.0
+- cdktf>=0.21.0
++ cdktn>=0.22.0
 
 - cdktf-cdktf-provider-aws>=19.0.0
 + cdktn-provider-aws>=20.0.0
@@ -118,8 +119,8 @@ pipenv install --dev
 
 ```diff
 require (
--   github.com/hashicorp/terraform-cdk-go/cdktf v0.20.0
-+   github.com/open-constructs/cdk-terrain-go/cdktn v0.21.0
+-   github.com/hashicorp/terraform-cdk-go/cdktf v0.21.0
++   github.com/open-constructs/cdk-terrain-go/cdktn v0.22.0
 )
 ```
 
@@ -146,8 +147,8 @@ go mod tidy
 
 ```diff
 dependencies {
--   implementation "com.hashicorp:cdktf:0.20.0"
-+   implementation "io.cdktn:cdktn:0.21.0"
+-   implementation "com.hashicorp:cdktf:0.21.0"
++   implementation "io.cdktn:cdktn:0.22.0"
 }
 ```
 
@@ -172,8 +173,8 @@ dependencies {
 
 ```diff
 <ItemGroup>
--   <PackageReference Include="HashiCorp.Cdktf" Version="0.20.0" />
-+   <PackageReference Include="Io.Cdktn" Version="0.21.0" />
+-   <PackageReference Include="HashiCorp.Cdktf" Version="0.21.0" />
++   <PackageReference Include="Io.Cdktn" Version="0.22.0" />
 </ItemGroup>
 ```
 
@@ -194,14 +195,14 @@ dotnet restore
 
 The following items are unchanged and backward compatible:
 
-| Item | Value | Notes |
-|------|-------|-------|
-| Configuration file | `cdktf.json` | No rename needed |
-| Output directory | `cdktf.out/` | Still the default |
-| Environment variables | `CDKTF_*` | Still honored |
-| Home directory | `~/.cdktf` | Still used |
-| Terraform provider sources | `hashicorp/aws`, etc. | Unchanged |
-| Terraform state | Your `.tfstate` files | Unaffected |
+| Item                       | Value                 | Notes             |
+| -------------------------- | --------------------- | ----------------- |
+| Configuration file         | `cdktf.json`          | No rename needed  |
+| Output directory           | `cdktf.out/`          | Still the default |
+| Environment variables      | `CDKTF_*`             | Still honored     |
+| Home directory             | `~/.cdktf`            | Still used        |
+| Terraform provider sources | `hashicorp/aws`, etc. | Unchanged         |
+| Terraform state            | Your `.tfstate` files | Unaffected        |
 
 ## Transitional Period (Dual Dependencies)
 
@@ -210,8 +211,8 @@ If you use prebuilt providers that haven't been updated to `@cdktn/provider-*` y
 ```json
 {
   "dependencies": {
-    "cdktn": "^0.1.0",
-    "@cdktf/provider-aws": "^19.0.0"  // Still uses cdktf peer dep
+    "cdktn": "^0.22.0",
+    "@cdktf/provider-aws": "^19.0.0" // Still uses cdktf peer dep
   }
 }
 ```
@@ -221,6 +222,7 @@ This is supported but not recommended long-term.
 ### Bundle Size Impact
 
 When both packages are installed:
+
 - **Bundle size**: Approximately 2x larger (both packages included)
 - **Tree-shaking**: Bundlers will remove unused exports, reducing actual impact
 - **Shared dependencies**: `constructs` is deduplicated between packages

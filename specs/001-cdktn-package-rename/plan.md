@@ -13,23 +13,24 @@ Rename all public-facing package names, modules, and CLI commands from `cdktf` t
 
 **Language/Version**: TypeScript 5.4.5 (strict mode, target ES2018, CommonJS)
 **Primary Dependencies**:
+
 - Build: jsii 5.8.9, jsii-pacmak 1.112.0, esbuild 0.25.4
 - Runtime: constructs (JSII base), yargs (CLI), ink (React UI), chalk
 - Telemetry: @sentry/node 7.120.3
-**Storage**: N/A (no database; file-based config via `cdktf.json`)
-**Testing**: Jest 29.7.0 with ts-jest preset, 36+ test files in core, 28 in hcl2cdk
-**Target Platform**: Node.js 20+ (Linux, macOS, Windows); JSII targets: Python 3.x, Java, .NET, Go
-**Project Type**: Lerna monorepo with yarn workspaces
-**Performance Goals**: Same performance envelope as existing cdktf CLI (no measurable regression)
-**Constraints**:
+  **Storage**: N/A (no database; file-based config via `cdktf.json`)
+  **Testing**: Jest 29.7.0 with ts-jest preset, 36+ test files in core, 28 in hcl2cdk
+  **Target Platform**: Node.js 20+ (Linux, macOS, Windows); JSII targets: Python 3.x, Java, .NET, Go
+  **Project Type**: Lerna monorepo with yarn workspaces
+  **Performance Goals**: Same performance envelope as existing cdktf CLI (no measurable regression)
+  **Constraints**:
 - Internal symbols (`Symbol.for("cdktf/*")`) MUST remain unchanged
 - Synthesized logical IDs (`__cdktf_*`) MUST remain unchanged
 - `cdktf.json` and `CDKTF_*` env vars MUST continue working
-**Scale/Scope**: 8 packages to rename, ~10k LOC affected, 5 language targets (TS, Python, Java, C#, Go)
+  **Scale/Scope**: 8 packages to rename, ~10k LOC affected, 5 language targets (TS, Python, Java, C#, Go)
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 Verify compliance with principles from `.specify/memory/constitution.md`:
 
@@ -42,6 +43,7 @@ Verify compliance with principles from `.specify/memory/constitution.md`:
 - [ ] **Issue Tracking**: Beads epic to be created after plan approval
 
 **Complexity Violations** (if any, justify in Complexity Tracking table below):
+
 - None identified - this is a systematic rename, not new feature development
 
 ### YAGNI/KISS Alignment
@@ -49,6 +51,7 @@ Verify compliance with principles from `.specify/memory/constitution.md`:
 Per user instruction: **"We must understand existing code carefully and avoid introducing new dependencies"**
 
 This plan adheres to:
+
 - **YAGNI**: No new abstractions; rename only what exists
 - **KISS**: Find-and-replace approach; no architectural changes
 - **Minimal Viable Change**: Rename packages without bundling unrelated improvements
@@ -101,8 +104,8 @@ examples/                      # Example projects (update imports)
 No violations - this feature follows all constitution principles:
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| None | N/A | N/A |
+| --------- | ---------- | ------------------------------------ |
+| None      | N/A        | N/A                                  |
 
 ## Pre-Task Generation Spike: Completed
 
@@ -112,13 +115,13 @@ Dual-dependency coexistence spike conducted per clarification session. See [rese
 
 ### Spike Summary
 
-| Area | Finding | Risk |
-|------|---------|------|
+| Area                      | Finding                                                                              | Risk |
+| ------------------------- | ------------------------------------------------------------------------------------ | ---- |
 | **Symbol.for() Behavior** | Global registry returns same symbol for both packages - enables transitional support | None |
-| **Bundler Behavior** | Both packages bundled; temporary size increase; tree-shaking works | Low |
-| **JSII Cross-Language** | FQNs completely separate types (Python, Java, C#, Go) | None |
-| **TypeScript Types** | Aliased imports resolve; `skipLibCheck` as fallback | Low |
-| **Peer Dependencies** | Package managers handle mixed deps with warnings | Low |
+| **Bundler Behavior**      | Both packages bundled; temporary size increase; tree-shaking works                   | Low  |
+| **JSII Cross-Language**   | FQNs completely separate types (Python, Java, C#, Go)                                | None |
+| **TypeScript Types**      | Aliased imports resolve; `skipLibCheck` as fallback                                  | Low  |
+| **Peer Dependencies**     | Package managers handle mixed deps with warnings                                     | Low  |
 
 ### Key Findings
 
@@ -139,25 +142,34 @@ Dual-dependency coexistence spike conducted per clarification session. See [rese
 ## Implementation Phases (High-Level)
 
 ### Phase 1: Core Package Renames
+
 - Update package.json names and JSII configurations
 - Update internal import paths
 - Preserve runtime symbols (`Symbol.for("cdktf/*")`)
 
 ### Phase 2: CLI Rename
+
 - Rename CLI entry point and binary
 - Update user-facing text (help, logs, errors)
 - Update templates to reference `cdktn` packages
 
 ### Phase 3: Provider Generator
+
 - Ensure generated code references `cdktn` packages
 - No `@cdktf/*` scope in generated manifests
 
 ### Phase 4: Migration Tooling
+
 - Add `cdktn migrate` command
-- Support import/dependency updates across languages
-- Dry-run mode for safe preview
+- Support import/dependency updates across published languages (TypeScript, Python, Go)
+- Dry-run mode for safe preview (default: prints list of files and changes)
+- Telemetry integration:
+  - Update Sentry release tag to `cdktn-cli-${DISPLAY_VERSION}`
+  - Add migration-specific event tracking (success, failure, dual-dependency detection)
 
 ### Phase 5: Validation
+
 - Run relevant test suites (identify critical test suites for validation)
-- Integration tests for all languages
+- Integration tests for all published languages (TypeScript, Python, Go)
 - End-to-end: init → synth → get → convert
+- CLI coexistence test: verify `cdktn` works correctly when `cdktf-cli` is also installed globally
