@@ -199,7 +199,11 @@ class NodePackageManager extends PackageManager {
       const json = yarnListSchema.parse(JSON.parse(stdout));
 
       return (json?.data?.trees || [])
-        .filter((dep: any) => dep.name.startsWith("@cdktf/provider-"))
+        .filter(
+          (dep: any) =>
+            dep.name.startsWith("@cdktf/provider-") ||
+            dep.name.startsWith("@cdktn/provider-"),
+        )
         .map((dep: any) => ({
           name: `@${dep.name.split("@")[1]}`,
           version: dep.name.split("@")[2],
@@ -223,7 +227,11 @@ class NodePackageManager extends PackageManager {
       const json = npmListSchema.parse(JSON.parse(stdout));
 
       return Object.entries(json?.dependencies || {})
-        .filter(([depName]) => depName.startsWith("@cdktf/provider-"))
+        .filter(
+          ([depName]) =>
+            depName.startsWith("@cdktf/provider-") ||
+            depName.startsWith("@cdktn/provider-"),
+        )
         .map(([name, dep]) => ({ name, version: dep.version }));
     } catch (e: any) {
       throw new Error(
@@ -378,8 +386,10 @@ class PythonPackageManager extends PackageManager {
       );
 
       const list = pipPackageSchema.parse(JSON.parse(stdout));
-      return list.filter((item) =>
-        item.name.startsWith("cdktf-cdktf-provider"),
+      return list.filter(
+        (item) =>
+          item.name.startsWith("cdktf-cdktf-provider") ||
+          item.name.startsWith("cdktn-provider"),
       );
     } catch (e: any) {
       throw new Error(
@@ -394,12 +404,14 @@ class PythonPackageManager extends PackageManager {
         cwd: this.workingDirectory,
       });
       logger.debug(
-        `Listing pipenv packages using "pip list --format=json": ${stdout}`,
+        `Listing pip packages using "pip list --format=json": ${stdout}`,
       );
 
       const list = pipPackageSchema.parse(JSON.parse(stdout));
-      return list.filter((item) =>
-        item.name.startsWith("cdktf-cdktf-provider"),
+      return list.filter(
+        (item) =>
+          item.name.startsWith("cdktf-cdktf-provider") ||
+          item.name.startsWith("cdktn-provider"),
       );
     } catch (e: any) {
       throw new Error(
@@ -479,11 +491,11 @@ class NugetPackageManager extends PackageManager {
         cwd: this.workingDirectory,
       });
       logger.debug(
-        `Listing pipenv packages using "dotnet list package": ${stdout}`,
+        `Listing nuget packages using "dotnet list package": ${stdout}`,
       );
 
       const regex =
-        /^\s*>\s(HashiCorp\.Cdktf\.Providers\.[\w.]+)\s+((?:\d+\.){2}\d+(?:-\S+)?)\s+((?:\d+\.){2}\d+(?:-\S+)?)\s*$/;
+        /^\s*>\s((?:HashiCorp\.Cdktf|Io\.Cdktn)\.Providers\.[\w.]+)\s+((?:\d+\.){2}\d+(?:-\S+)?)\s+((?:\d+\.){2}\d+(?:-\S+)?)\s*$/;
 
       return stdout
         .split("\n")
@@ -633,7 +645,11 @@ class MavenPackageManager extends JavaPackageManager {
           version: dep.elements?.find((el) => el.name === "version")
             ?.elements?.[0].text as string,
         }))
-        .filter((dep) => dep.name.startsWith("com.hashicorp.cdktf-provider-"));
+        .filter(
+          (dep) =>
+            dep.name.startsWith("com.hashicorp.cdktf-provider-") ||
+            dep.name.startsWith("io.cdktn.cdktn-provider-"),
+        );
     } catch (e: any) {
       throw new Error(
         `Could not determine installed packages reading the pom.xml: ${e.message}`,
@@ -698,7 +714,10 @@ class GradlePackageManager extends JavaPackageManager {
         if (!dep) {
           return false;
         }
-        return dep.name.includes("cdktf-provider-");
+        return (
+          dep.name.includes("cdktf-provider-") ||
+          dep.name.includes("cdktn-provider-")
+        );
       })
       .map((dep) => ({
         name: `com.hashicorp.${dep!.name}`,
@@ -809,7 +828,8 @@ class GoPackageManager extends PackageManager {
         .filter(
           (line) =>
             line.startsWith("github.com/hashicorp/cdktf-provider") ||
-            line.startsWith("github.com/cdktf/cdktf-provider"),
+            line.startsWith("github.com/cdktf/cdktf-provider") ||
+            line.startsWith("github.com/cdktn-io/cdktn-provider"),
         )
         .map((line) => {
           const parts = line.split(" ");

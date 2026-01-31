@@ -586,6 +586,7 @@ export async function debug(argv: any) {
                 terraformProviderVersion: provider.providerVersion,
                 prebuiltProviderVersion: provider.packageVersion,
                 cdktfVersion: provider.cdktfVersion,
+                cdktnVersion: provider.cdktnVersion,
               };
             }),
           },
@@ -614,7 +615,8 @@ export async function debug(argv: any) {
         `${provider.packageName} (PREBUILT)
         terraform provider version: ${provider.providerVersion} 
         prebuilt provider version: ${provider.packageVersion}
-        cdktf version: ${provider.cdktfVersion}`,
+        cdktf version: ${provider.cdktfVersion}
+        cdktn version: ${provider.cdktnVersion}`,
       );
     }
   }
@@ -755,6 +757,7 @@ export async function providerList(argv: any) {
       "Provider Name": provider.providerName || "",
       "Provider Version": provider.providerVersion || "",
       CDKTF: "",
+      CDKTN: "",
       Constraint: provider.providerConstraint || "",
       "Package Name": "",
       "Package Version": "",
@@ -765,6 +768,7 @@ export async function providerList(argv: any) {
       "Provider Name": provider.providerName || "",
       "Provider Version": provider.providerVersion || "",
       CDKTF: provider.cdktfVersion || "",
+      CDKTN: provider.cdktnVersion || "",
       Constraint: "",
       "Package Name": provider.packageName || "",
       "Package Version": provider.packageVersion || "",
