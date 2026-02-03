@@ -162,6 +162,7 @@ type PrebuiltProviderVersion = {
   providerVersion: string; // e.g. "4.12.1"
   cdktfPeerDependencyConstraint: string; // e.g. "^10.0.0"
   cdktnPeerDependencyConstraint: string;
+  packageName: string;
 };
 
 export async function getPrebuiltProviderRepositoryName(
@@ -202,6 +203,7 @@ export async function getAllPrebuiltProviderVersions(
         return undefined;
       }
       return {
+        packageName,
         packageVersion: version,
         providerVersion: provider.version,
         cdktfPeerDependencyConstraint: packageJson.peerDependencies.cdktf,
@@ -235,7 +237,7 @@ function cdktfVersionMatches(
 export async function getPrebuiltProviderVersions(
   constraint: ProviderConstraint,
   cdktfVersion: string,
-): Promise<string[] | null> {
+): Promise<{ name: string; version: string }[] | null> {
   const cdktfProviderName = await getNpmPackageName(constraint, false);
   const cdktnProviderName = await getNpmPackageName(constraint, true);
 
@@ -282,8 +284,11 @@ export async function getPrebuiltProviderVersions(
     return null;
   }
   const npmPackageVersions = matchingVersions
-    .map((matchingVersion) => matchingVersion.packageVersion)
-    .sort(semver.compare)
+    .map((matchingVersion) => ({
+      name: matchingVersion.packageName,
+      version: matchingVersion.packageVersion,
+    }))
+    .sort((a, b) => semver.compare(a.version, b.version))
     .reverse();
   return npmPackageVersions;
 }

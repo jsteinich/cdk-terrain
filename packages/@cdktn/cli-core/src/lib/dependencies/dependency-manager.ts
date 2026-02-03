@@ -211,15 +211,14 @@ export class DependencyManager {
       `Searching for latest matching version of ${constraint.simplifiedName}`,
     );
 
-    const packageName = await this.getPackageName(constraint);
-    const packageVersion = await this.getMatchingProviderVersion(constraint);
+    const { name, version } = await this.getMatchingProviderVersion(constraint);
 
-    logger.debug(`Found package ${packageName}@${packageVersion}`);
-    if (packageVersion !== currentVersion) {
-      await this.packageManager.addPackage(packageName, packageVersion);
+    logger.debug(`Found package ${name}@${version}`);
+    if (version !== currentVersion) {
+      await this.packageManager.addPackage(name, version);
     } else {
       console.log(
-        `The latest version of ${packageName} is already installed: ${packageVersion}`,
+        `The latest version of ${name} is already installed: ${version}`,
       );
     }
   }
@@ -268,32 +267,23 @@ export class DependencyManager {
 
     if (!npmPackageName) return;
 
+    return this.tryGetLanguagePackageName(npmPackageName);
+  }
+
+  private async tryGetLanguagePackageName(
+    npmPackageName: string,
+  ): Promise<string | undefined> {
     const prebuiltProviderRepository =
       await getPrebuiltProviderRepositoryName(npmPackageName);
 
     return this.convertPackageName(
       npmPackageName,
       prebuiltProviderRepository,
-      useCdktn,
+      npmPackageName.startsWith("@cdktn"),
     );
   }
 
-  private async getPackageName(
-    constraint: ProviderConstraint,
-  ): Promise<string> {
-    const cdktfPackageName = await this.tryGetPackageName(constraint, false);
-    const cdktnPackageName = await this.tryGetPackageName(constraint, true);
-    if (!cdktfPackageName && !cdktnPackageName) {
-      throw Errors.Usage(
-        `Could not find pre-built provider for ${constraint.source}`,
-      );
-    }
-    return cdktnPackageName ?? cdktfPackageName!;
-  }
-
   async getMatchingProviderVersion(constraint: ProviderConstraint) {
-    const packageName = await this.getPackageName(constraint);
-
     const prebuiltProviderNpmVersions = await getPrebuiltProviderVersions(
       constraint,
       this.cdktfVersion,
@@ -305,7 +295,6 @@ export class DependencyManager {
     }
 
     const packageVersion = await this.getLanguageSpecificPackageVersion(
-      packageName,
       prebuiltProviderNpmVersions,
     );
 
@@ -323,9 +312,8 @@ export class DependencyManager {
       `adding pre-built provider ${constraint.source} with version constraint ${constraint.version} for cdktf version ${this.cdktfVersion}`,
     );
 
-    const packageName = await this.getPackageName(constraint);
-    const packageVersion = await this.getMatchingProviderVersion(constraint);
-    await this.packageManager.addPackage(packageName, packageVersion, silent);
+    const { name, version } = await this.getMatchingProviderVersion(constraint);
+    await this.packageManager.addPackage(name, version, silent);
 
     // TODO: more debug logs
   }
@@ -334,9 +322,8 @@ export class DependencyManager {
   // This happens mostly in cases where a provider update failed to publish to one of the registries
   // In that case we use the latest version that was published successfully and works with the current cdktf release
   private async getLanguageSpecificPackageVersion(
-    packageName: string,
-    prebuiltProviderNpmVersions: string[],
-  ) {
+    prebuiltProviderNpmVersions: { name: string; version: string }[],
+  ): Promise<{ name: string; version: string } | null> {
     logger.debug(
       "Found possibly matching versions (released on npm): ",
       prebuiltProviderNpmVersions,
@@ -345,18 +332,21 @@ export class DependencyManager {
       "Searching through package manager to find latest available version for given language",
     );
 
-    for (const version of prebuiltProviderNpmVersions) {
+    for (const { name, version } of prebuiltProviderNpmVersions) {
       try {
+        const languagePackageName = await this.tryGetLanguagePackageName(name);
+        if (!languagePackageName) continue;
+
         const isAvailable = await this.packageManager.isNpmVersionAvailable(
-          packageName,
+          languagePackageName,
           version,
         );
         if (isAvailable) {
-          return version;
+          return { name: languagePackageName, version };
         }
       } catch (err) {
         logger.info(
-          `Could not find version ${version} for package ${packageName}: '${err}'. Skipping...`,
+          `Could not find version ${version} for package ${name}: '${err}'. Skipping...`,
         );
       }
     }
@@ -395,8 +385,8 @@ export class DependencyManager {
     useCdktn: boolean,
   ): string | undefined {
     return useCdktn
-      ? this.convertPackageNameCdktn(repository, name)
-      : this.convertPackageNameCdktf(repository, name);
+      ? this.convertPackageNameCdktn(name, repository)
+      : this.convertPackageNameCdktf(name, repository);
   }
 
   /**
