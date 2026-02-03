@@ -162,7 +162,7 @@ describe("prebuilt-providers", () => {
         .replyWithError({ code: "ETIMEDOUT" });
 
       await expect(
-        getNpmPackageName(ProviderConstraint.fromConfigEntry("test")),
+        getNpmPackageName(ProviderConstraint.fromConfigEntry("test"), false),
       ).rejects.toThrowError("Connection error");
     });
 
@@ -181,7 +181,7 @@ describe("prebuilt-providers", () => {
         });
 
       await expect(
-        getNpmPackageName(ProviderConstraint.fromConfigEntry("test")),
+        getNpmPackageName(ProviderConstraint.fromConfigEntry("test"), false),
       ).resolves.toEqual("@cdktf/provider-test");
     });
 
@@ -193,7 +193,7 @@ describe("prebuilt-providers", () => {
         });
 
       await expect(
-        getNpmPackageName(ProviderConstraint.fromConfigEntry("test")),
+        getNpmPackageName(ProviderConstraint.fromConfigEntry("test"), false),
       ).resolves.toEqual("@cdktf/provider-test");
     });
   });
