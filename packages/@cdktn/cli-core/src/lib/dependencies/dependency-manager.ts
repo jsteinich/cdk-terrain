@@ -434,11 +434,9 @@ export class DependencyManager {
       case Language.TYPESCRIPT: // e.g. @cdktf/provider-random
         return name; // already the correct name
       case Language.CSHARP: // e.g. HashiCorp.Cdktf.Providers.Opentelekomcloud
-        // return `Io.Cdktn.Providers.` + toPascalCase(providerName);
-        return undefined; // not currently supported
+        return `Io.Cdktn.Providers.` + toPascalCase(providerName);
       case Language.JAVA: // e.g. com.hashicorp.opentelekomcloud
-        // return `io.cdktn.cdktn-provider-${providerName}`;
-        return undefined; // not currently supported
+        return `io.cdktn.cdktn-provider-${providerName}`;
       case Language.PYTHON: // e.g. cdktf-cdktf-provider-opentelekomcloud
         return `cdktn-provider-${providerName}`;
       default:
