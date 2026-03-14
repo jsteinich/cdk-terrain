@@ -2,7 +2,7 @@ import { spawn } from "cross-spawn";
 import { logger } from "@cdktn/commons";
 import os from "os";
 
-interface InteractiveSpawnConfig {
+export interface InteractiveSpawnConfig {
   file: Parameters<typeof spawn>[0];
   args: Parameters<typeof spawn>[1];
   options: Parameters<typeof spawn>[2] & { cwd: string };

@@ -44,7 +44,6 @@
     "@cdktn/hcl-tools": "0.0.0",
     "@cdktn/hcl2cdk": "0.0.0",
     "@cdktn/hcl2json": "0.0.0",
-    "@cdktf/node-pty-prebuilt-multiarch": "^0.10.2",
     "@cdktn/provider-schema": "0.0.0",
     "@sentry/node": "7.120.4",
     "archiver": "7.0.1",

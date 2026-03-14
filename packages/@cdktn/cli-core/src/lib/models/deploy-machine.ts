@@ -12,18 +12,14 @@ import {
   Sender,
   Receiver,
 } from "xstate";
-import * as pty from "@cdktf/node-pty-prebuilt-multiarch";
 import { Errors, logger } from "@cdktn/commons";
 import { missingVariable } from "../errors";
 import stripAnsi from "strip-ansi";
 import { EOL } from "os";
-import { spawnPty } from "./pty-process";
-
-interface PtySpawnConfig {
-  file: Parameters<typeof pty.spawn>[0];
-  args: Parameters<typeof pty.spawn>[1];
-  options: Parameters<typeof pty.spawn>[2] & { cwd: string };
-}
+import {
+  spawnInteractive,
+  InteractiveSpawnConfig,
+} from "./interactive-process";
 
 interface DeployContext {
   exitCode?: number;
@@ -34,7 +30,7 @@ interface DeployContext {
 }
 
 export type DeployEvent =
-  | { type: "START"; pty: PtySpawnConfig }
+  | { type: "START"; pty: InteractiveSpawnConfig }
   | { type: "STOP" }
   | { type: "SEND_LINE"; input: string }
   | { type: "OUTPUT_RECEIVED"; output: string }
@@ -295,7 +291,7 @@ export const deployMachine = createMachine<
   {
     services: {
       runTerraformInPty: (context, event) =>
-        terraformPtyService(context, event, spawnPty),
+        terraformPtyService(context, event, spawnInteractive),
     },
   },
 );
@@ -303,7 +299,7 @@ export const deployMachine = createMachine<
 export function terraformPtyService(
   _context: DeployContext,
   event: DeployEvent,
-  spawn = spawnPty,
+  spawn = spawnInteractive,
 ): (send: Sender<DeployEvent>, onReceive: Receiver<DeployEvent>) => void {
   return (send: Sender<DeployEvent>, onReceive: Receiver<DeployEvent>) => {
     if (event.type !== "START") {
@@ -382,7 +378,7 @@ export function createAndStartDeployService(options: {
     }`,
   );
 
-  const config: PtySpawnConfig = {
+  const config: InteractiveSpawnConfig = {
     file: options.terraformBinaryName,
     args,
     options: {
@@ -434,7 +430,7 @@ export function createAndStartDestroyService(options: {
     }`,
   );
 
-  const config: PtySpawnConfig = {
+  const config: InteractiveSpawnConfig = {
     file: options.terraformBinaryName,
     args,
     options: {
