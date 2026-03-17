@@ -41,7 +41,7 @@ export function spawnInteractive(
 
   // Generally want interactive input for handling various prompts; however,
   // also need to be able to write specific responses, so create a pipe if not normally possible.
-  options.stdio = [writable ? "inherit" : "pipe", "pipe", "pipe"];
+  options.stdio = [writable ? "inherit" : "pipe", "inherit", "inherit"];
 
   logger.trace(
     `Spawning process with file=${file}, args=${
@@ -78,11 +78,13 @@ export function spawnInteractive(
     },
   };
 
-  p.stdout?.on("data", onData);
+  p.stdout?.on("data", (chunk: Buffer) => {
+    onData(chunk.toLocaleString());
+  });
 
   if (!writable) {
     // Relay input to emulate interactive process
-    process.stdin.on("data", (data: string) => p.stdin?.write(data));
+    process.stdin.on("data", (chunk: Buffer) => p.stdin?.write(chunk));
   }
 
   const exitCode = new Promise<number>((resolve) => {
