@@ -48,3 +48,6 @@ website/docs/*
 !website/docs/cdktn/
 website/docs/cdktn/*
 !website/docs/cdktn/docs.json
+
+.claude/worktrees
+.claude/settings.local.json

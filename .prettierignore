@@ -34,3 +34,6 @@ test/edge-provider-bindings
 *.cs
 packages/cdktf-cli/src/lib/ambient.d.ts
 packages/cdktf-cli/ambient.d.ts
+
+/.nx/cache
+/.nx/workspace-data
