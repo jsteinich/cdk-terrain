@@ -172,7 +172,6 @@ export function handleLineReceived(send: (event: DeployEvent) => void) {
     }
 
     if (!hideOutput) {
-      console.log(`Unhidden output: ${output}`);
       send({
         type: "OUTPUT_RECEIVED",
         output,
