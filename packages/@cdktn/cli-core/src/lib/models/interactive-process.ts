@@ -82,11 +82,6 @@ export function spawnInteractive(
     onData(chunk.toLocaleString());
   });
 
-  if (!writable) {
-    // Relay input to emulate interactive process
-    process.stdin.on("data", (chunk: Buffer) => p.stdin?.write(chunk));
-  }
-
   const exitCode = new Promise<number>((resolve) => {
     p.once("close", (code: number) => {
       if (code !== 0) {
