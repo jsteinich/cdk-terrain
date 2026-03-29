@@ -146,10 +146,7 @@ export function handleLineReceived(send: (event: DeployEvent) => void) {
       hideOutput = true;
       send({ type: "OUTPUT_RECEIVED", output });
       send({ type: "REQUEST_APPROVAL" });
-    } else if (
-      noColorLine.includes("var.") &&
-      noColorLine.includes("Enter a value:")
-    ) {
+    } else if (noColorLine.includes("var.")) {
       hideOutput = true;
 
       const variableName = extractVariableNameFromPrompt(output);
@@ -158,6 +155,9 @@ export function handleLineReceived(send: (event: DeployEvent) => void) {
         output: missingVariable(variableName),
       });
       send({ type: "VARIABLE_MISSING", variableName });
+    } else if (noColorLine.includes("Enter a value:")) {
+      // This comes along with above block, but is a separate line
+      hideOutput = true;
     } else if (
       noColorLine.includes(
         "Do you want to override the soft failed policy check?",
