@@ -41,7 +41,7 @@ export function spawnInteractive(
 
   // Generally want interactive input for handling various prompts; however,
   // also need to be able to write specific responses, so create a pipe if not normally possible.
-  options.stdio = [writable ? "inherit" : "pipe", "inherit", "inherit"];
+  options.stdio = [writable ? "inherit" : "pipe", "pipe", "pipe"];
 
   logger.trace(
     `Spawning process with file=${file}, args=${
