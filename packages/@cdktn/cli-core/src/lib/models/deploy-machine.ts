@@ -119,7 +119,7 @@ export function bufferUnterminatedLines(
     // the fallback to an empty string is to make TS happy and should never happen
     buffer = lines.pop() || "";
 
-    if (lines.length > 0) handler(lines.join(EOL) + "\n");
+    if (lines.length > 0) handler(lines.join(EOL) + EOL);
   }
   bufferedReceiverFunction.getBuffer = () => buffer;
 
