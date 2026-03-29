@@ -112,7 +112,7 @@ export function bufferUnterminatedLines(
   let buffer = "";
   function bufferedReceiverFunction(output: string) {
     buffer += output;
-    const lines = buffer.split(EOL);
+    const lines = buffer.split(/[\n\r]+/);
 
     // if the string ends with \n this will be an empty string
     // else it will contain an "unfinished" line
