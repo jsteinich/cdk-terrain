@@ -146,6 +146,8 @@ jobs:
   release_github:
     name: Release to Github
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     needs:
       - prepare-release
       - integration_test

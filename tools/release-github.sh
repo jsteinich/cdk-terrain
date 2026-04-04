@@ -35,7 +35,8 @@ fs.writeFileSync('/tmp/req.json', JSON.stringify(req, undefined, 2));
 HERE
 
 echo "creating github release for ${version}"
-curl --request POST \
+curl --fail \
+  --request POST \
   --header "Authorization: token ${GITHUB_TOKEN}" \
   --header "Content-Type: application/json" \
   --data @/tmp/req.json \
