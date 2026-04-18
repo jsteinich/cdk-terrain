@@ -5,7 +5,7 @@
     "kubernetes": "kubernetes",
     "consul": "consul",
     "vault": "vault",
-    "nomad": "nomad",
+    "nomad": "nomad@ ~> 2.5.2",
     "external": "external",
     "openstack": "terraform-providers/openstack",
     "oci": "hashicorp/oci@~> 7.23.0",
