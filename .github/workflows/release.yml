@@ -87,6 +87,7 @@ jobs:
     with:
       skip_setup: true
       concurrency_group_prefix: release
+      dist_artifact_name: dist
     secrets: inherit
 
   provider_integration_test:
@@ -97,6 +98,7 @@ jobs:
     with:
       concurrency_group_prefix: release
       skip_setup: true
+      dist_artifact_name: dist
     secrets: inherit
 
   examples:
