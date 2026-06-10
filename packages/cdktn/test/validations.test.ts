@@ -11,6 +11,7 @@ import {
 } from "../src/validations";
 import { TestProvider } from "./helper/provider";
 import { createTmpHelper } from "./helper/tmp";
+import { terraformBinaryName } from "../src/util";
 
 const tmp = createTmpHelper();
 
@@ -268,9 +269,11 @@ describe("ValidateTerraformFeatureVersion", () => {
       ),
     );
 
+    const binaryName = terraformBinaryName;
+
     expect(() => app.synth()).toThrowErrorMatchingInlineSnapshot(`
       "Validation failed with the following errors:
-        [MyStack/testResource] Could not determine whether terraform is Terraform or OpenTofu from the first line of terraform version output: {\"terraform_version\":\"1.10.10\"}
+        [MyStack/testResource] Could not determine whether ${binaryName} is Terraform or OpenTofu from the first line of ${binaryName} version output: {\"terraform_version\":\"1.10.10\"}
 
       If you wish to ignore these validations, pass 'skipValidation: true' to your App configuration.
       "
