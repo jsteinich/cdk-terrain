@@ -68,6 +68,29 @@ exports[`readSchema generates a local module 1`] = `
 }"
 `;
 
+exports[`readSchema generates a local module that requires provider configuration aliases 1`] = `
+"{
+  "format_version": "STUBBED VERSION",
+  "local_module": {
+    "inputs": [
+      {
+        "description": "Name of the s3 bucket. Must be unique.",
+        "name": "bucket_name",
+        "required": true,
+        "type": "string"
+      }
+    ],
+    "name": "local_module",
+    "outputs": [
+      {
+        "description": "ARN of the bucket",
+        "name": "arn"
+      }
+    ]
+  }
+}"
+`;
+
 exports[`readSchema generates a local module with inline comments in type constraints 1`] = `
 "{
   "format_version": "STUBBED VERSION",
