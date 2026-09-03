@@ -452,10 +452,14 @@ export interface ModuleProviderAlias {
   source?: string;
 }
 
-// hcl2json hands expressions back as interpolations, so a
+const CONFIGURATION_ALIAS = /^([\w-]+)\.([\w-]+)$/;
+
+// hcl2json hands HCL expressions back as interpolations, so a
 // `configuration_aliases = [aws.global_region]` entry arrives as the string
-// "${aws.global_region}".
-const CONFIGURATION_ALIAS = /^\$\{([\w-]+)\.([\w-]+)\}$/;
+// "${aws.global_region}". A .tf.json module writes the same reference as a
+// plain string, which hcl2json passes through untouched.
+const unwrapInterpolation = (value: string) =>
+  value.startsWith("${") && value.endsWith("}") ? value.slice(2, -1) : value;
 
 const toArray = <T>(item: T | T[] | undefined | null): T[] => {
   if (item === undefined || item === null) return [];
@@ -466,9 +470,11 @@ const toArray = <T>(item: T | T[] | undefined | null): T[] => {
  * Collects the provider configurations a module requires its caller to pass
  * in, from the hcl2json representation of the module's directory.
  *
- * hcl2json represents every block as an array (one entry per occurrence
+ * hcl2json represents every HCL block as an array (one entry per occurrence
  * across the module's files), so a module may declare `required_providers` in
- * more than one `terraform` block; all of them are considered.
+ * more than one `terraform` block; all of them are considered. Blocks read
+ * from a .tf.json module arrive unwrapped instead, and both shapes are
+ * handled here.
  *
  * @internal exposed for testing
  */
@@ -486,7 +492,9 @@ export function collectModuleProviderAliases(
         const provider = unwrapIfArray(declaration as any);
 
         for (const entry of toArray(provider?.configuration_aliases)) {
-          const match = CONFIGURATION_ALIAS.exec(String(entry));
+          const match = CONFIGURATION_ALIAS.exec(
+            unwrapInterpolation(String(entry)),
+          );
           if (!match) continue;
 
           const [, localName, alias] = match;

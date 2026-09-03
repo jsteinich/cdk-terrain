@@ -188,6 +188,37 @@ describe("collectModuleProviderAliases", () => {
       { localName: "aws", alias: "other", source: undefined },
     ]);
   });
+
+  it("reads the plain references a .tf.json module declares", () => {
+    // hcl2json only wraps HCL expressions in an interpolation; JSON syntax
+    // carries the reference as-is, and its blocks come through unwrapped
+    const parsed = {
+      terraform: {
+        required_providers: {
+          null: {
+            source: "hashicorp/null",
+            configuration_aliases: ["null.extra"],
+          },
+        },
+      },
+    };
+
+    expect(collectModuleProviderAliases(parsed)).toEqual([
+      { localName: "null", alias: "extra", source: "hashicorp/null" },
+    ]);
+  });
+
+  it("ignores entries that are not provider configuration references", () => {
+    const parsed = {
+      terraform: {
+        required_providers: {
+          aws: { configuration_aliases: ["${aws}", "${var.not_an_alias.x}"] },
+        },
+      },
+    };
+
+    expect(collectModuleProviderAliases(parsed)).toEqual([]);
+  });
 });
 
 describe("applyModuleProviderAliases", () => {

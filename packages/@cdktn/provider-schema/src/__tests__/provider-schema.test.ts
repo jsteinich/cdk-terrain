@@ -121,6 +121,21 @@ describe("readSchema", () => {
     const result = await readModuleSchema(target);
     expect(sanitizeJson(result)).toMatchSnapshot();
   }, 120000);
+
+  it("generates a local json module that requires provider configuration aliases", async () => {
+    const module = new TerraformModuleConstraint({
+      name: "local_module",
+      fqn: "local_module",
+      source: path.resolve(
+        __dirname,
+        "fixtures",
+        "local-json-module-provider-aliases",
+      ),
+    });
+    const target = new ConstructsMakerModuleTarget(module, Language.TYPESCRIPT);
+    const result = await readModuleSchema(target);
+    expect(sanitizeJson(result)).toMatchSnapshot();
+  }, 120000);
 });
 
 describe("sanitizeProviderSchema", () => {

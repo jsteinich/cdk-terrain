@@ -30,6 +30,29 @@ exports[`readSchema generates a local json module 1`] = `
 }"
 `;
 
+exports[`readSchema generates a local json module that requires provider configuration aliases 1`] = `
+"{
+  "format_version": "STUBBED VERSION",
+  "local_module": {
+    "inputs": [
+      {
+        "default": "module",
+        "description": "Name of the DigitalOcean static site",
+        "name": "name",
+        "required": false,
+        "type": "any"
+      }
+    ],
+    "name": "local_module",
+    "outputs": [
+      {
+        "name": "uri"
+      }
+    ]
+  }
+}"
+`;
+
 exports[`readSchema generates a local module 1`] = `
 "{
   "format_version": "STUBBED VERSION",
