@@ -1,7 +1,7 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: MPL-2.0
 
-FROM public.ecr.aws/jsii/superchain:1-bookworm-slim-node22-nightly@sha256:06598e70ca71c3b8ebf3a8d6836449c682da10610026211c2d1b475974bb9d7b
+FROM public.ecr.aws/jsii/superchain:1-bookworm-slim-node22@sha256:0287511d177cee98efeabea9f1ad26442d17c755716a8395e1110e07e0554fbf
 
 # Links the GHCR package to this repository so it shows up under the repo's
 # Packages and inherits repo-based access settings.
@@ -13,6 +13,8 @@ USER root
 
 ARG DEFAULT_TERRAFORM_VERSION
 ARG AVAILABLE_TERRAFORM_VERSIONS
+ARG DEFAULT_OPENTOFU_VERSION
+ARG AVAILABLE_OPENTOFU_VERSIONS
 
 RUN apt-get update -y && apt-get install -y unzip jq build-essential time python3-venv wget
 
@@ -44,9 +46,26 @@ ENV TF_PLUGIN_CACHE_DIR="/root/.terraform.d/plugin-cache"           \
     # MAVEN_OPTS is set in jsii/superchain with -Xmx512m. This isn't enough memory for provider generation.
     MAVEN_OPTS="-Xms256m -Xmx3G"
 
+# Create the plugin cache dir. Terraform and OpenTofu both warn on every
+# invocation when TF_PLUGIN_CACHE_DIR points at a directory that does not
+# exist, which pollutes stderr for anything parsing their output.
+RUN mkdir -p "${TF_PLUGIN_CACHE_DIR}"
+
 # Install Terraform
-RUN for VERSION in ${AVAILABLE_TERRAFORM_VERSIONS}; do curl -LOk https://releases.hashicorp.com/terraform/${VERSION}/terraform_${VERSION}_linux_amd64.zip && \
+RUN for VERSION in ${AVAILABLE_TERRAFORM_VERSIONS}; do curl -LO https://releases.hashicorp.com/terraform/${VERSION}/terraform_${VERSION}_linux_amd64.zip && \
     mkdir -p /usr/local/bin/tf/versions/${VERSION} && \
     unzip terraform_${VERSION}_linux_amd64.zip -d /usr/local/bin/tf/versions/${VERSION} && \
     ln -s /usr/local/bin/tf/versions/${VERSION}/terraform /usr/local/bin/terraform${VERSION};rm terraform_${VERSION}_linux_amd64.zip;done && \
     ln -s /usr/local/bin/tf/versions/${DEFAULT_TERRAFORM_VERSION}/terraform /usr/local/bin/terraform
+
+# Install OpenTofu, laid out the same way as Terraform above: one `tofu<version>`
+# binary per available version so TERRAFORM_BINARY_NAME can select one per job,
+# plus a bare `tofu` pointing at the default.
+RUN for VERSION in ${AVAILABLE_OPENTOFU_VERSIONS}; do RELEASE=https://github.com/opentofu/opentofu/releases/download/v${VERSION} && \
+    curl -fsSLO ${RELEASE}/tofu_${VERSION}_linux_amd64.zip && \
+    curl -fsSLO ${RELEASE}/tofu_${VERSION}_SHA256SUMS && \
+    grep "  tofu_${VERSION}_linux_amd64.zip$" tofu_${VERSION}_SHA256SUMS | sha256sum --check - && \
+    mkdir -p /usr/local/bin/otf/versions/${VERSION} && \
+    unzip tofu_${VERSION}_linux_amd64.zip -d /usr/local/bin/otf/versions/${VERSION} && \
+    ln -s /usr/local/bin/otf/versions/${VERSION}/tofu /usr/local/bin/tofu${VERSION};rm tofu_${VERSION}_linux_amd64.zip tofu_${VERSION}_SHA256SUMS;done && \
+    ln -s /usr/local/bin/otf/versions/${DEFAULT_OPENTOFU_VERSION}/tofu /usr/local/bin/tofu
