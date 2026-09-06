@@ -13,7 +13,10 @@ on:
 
 jobs:
   build-docker-image:
-    if: github.repository == 'open-constructs/cdk-terrain'
+    # The push trigger is already limited to main, but workflow_dispatch accepts
+    # any ref. Without the ref guard a manual dispatch from an arbitrary branch
+    # would publish :latest through this job's packages:write token.
+    if: github.repository == 'open-constructs/cdk-terrain' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
