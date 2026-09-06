@@ -35,8 +35,17 @@ exports.post = (ctx) => {
   // unresolved Java/Go imports). 10.8.1 restored the field, is deprecated-free
   // and is the higher version, so no range resolver will ever pick 10.8.0.
   installDeps([npm_cdktf, `constructs@10`], false, silent);
+  // TypeScript 5 and 6 are both supported; 7.x is the native port and is not
+  // supported by jsii yet, so the range is capped below it.
   installDeps(
-    ["@types/node", "typescript@5.x", "jest", "@types/jest", "ts-jest", "tsx"],
+    [
+      "@types/node",
+      "typescript@>=5.0.0 <7.0.0",
+      "jest",
+      "@types/jest",
+      "ts-jest",
+      "tsx",
+    ],
     true,
     silent
   );
