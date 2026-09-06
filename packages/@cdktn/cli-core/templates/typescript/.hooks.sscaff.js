@@ -32,7 +32,7 @@ exports.post = (ctx) => {
   // package. Keep both in sync.
   installDeps([npm_cdktf, `constructs@10`], false, silent);
   installDeps(
-    ["@types/node", "typescript@5.x", "jest", "@types/jest", "ts-jest", "ts-node"],
+    ["@types/node", "typescript@5.x", "jest", "@types/jest", "ts-jest", "tsx"],
     true,
     silent
   );
