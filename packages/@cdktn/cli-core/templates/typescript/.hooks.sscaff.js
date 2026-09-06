@@ -36,7 +36,7 @@ exports.post = (ctx) => {
   // and is the higher version, so no range resolver will ever pick 10.8.0.
   installDeps([npm_cdktf, `constructs@10`], false, silent);
   installDeps(
-    ["@types/node", "typescript@5.x", "jest", "@types/jest", "ts-jest", "ts-node"],
+    ["@types/node", "typescript@5.x", "jest", "@types/jest", "ts-jest", "tsx"],
     true,
     silent
   );
