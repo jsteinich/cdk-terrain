@@ -5,6 +5,8 @@
     "experimentalDecorators": true,
     "inlineSourceMap": true,
     "inlineSources": true,
+    // Required for ts-jest on TypeScript 6; `npm run build` still type-checks.
+    "isolatedModules": true,
     "lib": [
       "es2018"
     ],
@@ -22,6 +24,11 @@
     "strictPropertyInitialization": true,
     "stripInternal": true,
     "target": "ES2018",
+    // TypeScript 6 no longer picks up ambient @types automatically.
+    "types": [
+      "node",
+      "jest"
+    ],
     "incremental": true,
     "skipLibCheck": true
   },

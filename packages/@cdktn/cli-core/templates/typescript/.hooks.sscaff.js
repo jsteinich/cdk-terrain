@@ -31,8 +31,16 @@ exports.post = (ctx) => {
   // Mirrors the `constructs` peer dependency range declared by the cdktn
   // package. Keep both in sync.
   installDeps([npm_cdktf, `constructs@10`], false, silent);
+  // Capped below 7.x: that is the native port, which jsii does not support yet.
   installDeps(
-    ["@types/node", "typescript@5.x", "jest", "@types/jest", "ts-jest", "tsx"],
+    [
+      "@types/node",
+      "typescript@>=5.0.0 <7.0.0",
+      "jest",
+      "@types/jest",
+      "ts-jest",
+      "tsx",
+    ],
     true,
     silent
   );
