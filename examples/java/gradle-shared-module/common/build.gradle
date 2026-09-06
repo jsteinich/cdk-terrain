@@ -8,4 +8,8 @@ application {
 dependencies {
     api 'io.cdktn:cdktn:0.0.0'
     api 'software.constructs:constructs:10.0.5'
+    // Annotations on the generated `imports` sources; jsii 6 publishes these at
+    // "provided" scope. Only this module generates sources, so compileOnly.
+    compileOnly 'javax.annotation:javax.annotation-api:1.3.2'
+    compileOnly 'org.jetbrains:annotations:19.0.0'
 }
