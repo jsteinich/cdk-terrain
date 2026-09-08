@@ -44,7 +44,7 @@ jobs:
     name: Release to NPM (${{ inputs.channel }})
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/open-constructs/jsii-terraform@sha256:c46ac91c8be20947a2b0e27a517eb4a5bfc015c16a27341876ed0b04d734ddf5
+      image: ghcr.io/open-constructs/jsii-terraform@sha256:62c00a313a1c9457c0d8d3b6ee86c77d241c2d18c4cc1f9b9015836d6d6a98c8
     permissions:
       contents: read
       id-token: write
@@ -80,7 +80,7 @@ jobs:
     name: Release to PyPi (${{ inputs.channel }})
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/open-constructs/jsii-terraform@sha256:c46ac91c8be20947a2b0e27a517eb4a5bfc015c16a27341876ed0b04d734ddf5
+      image: ghcr.io/open-constructs/jsii-terraform@sha256:62c00a313a1c9457c0d8d3b6ee86c77d241c2d18c4cc1f9b9015836d6d6a98c8
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -120,7 +120,7 @@ jobs:
     name: Release to Maven Central (${{ inputs.channel }})
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/open-constructs/jsii-terraform@sha256:c46ac91c8be20947a2b0e27a517eb4a5bfc015c16a27341876ed0b04d734ddf5
+      image: ghcr.io/open-constructs/jsii-terraform@sha256:62c00a313a1c9457c0d8d3b6ee86c77d241c2d18c4cc1f9b9015836d6d6a98c8
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -153,7 +153,7 @@ jobs:
     name: Release to NuGet (${{ inputs.channel }})
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/open-constructs/jsii-terraform@sha256:c46ac91c8be20947a2b0e27a517eb4a5bfc015c16a27341876ed0b04d734ddf5
+      image: ghcr.io/open-constructs/jsii-terraform@sha256:62c00a313a1c9457c0d8d3b6ee86c77d241c2d18c4cc1f9b9015836d6d6a98c8
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -181,7 +181,7 @@ jobs:
     name: Release Go to Github Repo (${{ inputs.channel }})
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/open-constructs/jsii-terraform@sha256:c46ac91c8be20947a2b0e27a517eb4a5bfc015c16a27341876ed0b04d734ddf5
+      image: ghcr.io/open-constructs/jsii-terraform@sha256:62c00a313a1c9457c0d8d3b6ee86c77d241c2d18c4cc1f9b9015836d6d6a98c8
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
