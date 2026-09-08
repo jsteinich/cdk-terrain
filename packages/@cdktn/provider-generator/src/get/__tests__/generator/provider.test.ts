@@ -3,6 +3,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { TerraformProviderGenerator } from "../../generator/provider-generator";
+import { PROVIDER_FUNCTIONS_FOLDER_NAME } from "../../generator/models";
 import { CodeMaker } from "codemaker";
 import { createTmpHelper } from "../util";
 
@@ -28,7 +29,7 @@ test("generate provider", async () => {
   // aws has no provider-defined functions in this fixture - no getter, no
   // cross-directory import should be emitted.
   expect(output).not.toContain("public get functions()");
-  expect(output).not.toContain("provider-functions");
+  expect(output).not.toContain(`../${PROVIDER_FUNCTIONS_FOLDER_NAME}/index`);
 });
 
 test("generate provider with only block_types", async () => {
@@ -55,5 +56,5 @@ test("generate provider with only block_types", async () => {
   // elasticstack has no provider-defined functions in this fixture - no
   // getter, no cross-directory import should be emitted.
   expect(output).not.toContain("public get functions()");
-  expect(output).not.toContain("provider-functions");
+  expect(output).not.toContain(`../${PROVIDER_FUNCTIONS_FOLDER_NAME}/index`);
 });

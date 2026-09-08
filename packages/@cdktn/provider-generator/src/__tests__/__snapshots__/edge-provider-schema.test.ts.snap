@@ -11,7 +11,7 @@ export * as setBlockResource from './set-block-resource/index';
 export * as mapListResource from './map-list-resource/index';
 export * as ephemeralCachedSecret from './ephemeral-cached-secret/index';
 export * as provider from './provider/index';
-export * as providerFunctions from './provider-functions/index';
+export * as functions from './functions/index';
 
 "
 `;
@@ -27,7 +27,7 @@ Object.defineProperty(exports, 'setBlockResource', { get: function () { return r
 Object.defineProperty(exports, 'mapListResource', { get: function () { return require('./map-list-resource'); } });
 Object.defineProperty(exports, 'ephemeralCachedSecret', { get: function () { return require('./ephemeral-cached-secret'); } });
 Object.defineProperty(exports, 'provider', { get: function () { return require('./provider'); } });
-Object.defineProperty(exports, 'providerFunctions', { get: function () { return require('./provider-functions'); } });
+Object.defineProperty(exports, 'functions', { get: function () { return require('./functions'); } });
 
 "
 `;

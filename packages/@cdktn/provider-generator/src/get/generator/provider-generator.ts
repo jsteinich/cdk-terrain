@@ -11,6 +11,7 @@ import {
 } from "@cdktn/commons";
 import { FQPN, parseFQPN, ProviderName } from "@cdktn/provider-schema";
 import {
+  PROVIDER_FUNCTIONS_FOLDER_NAME,
   ProviderFunctionsModel,
   ResourceModel,
   assertNoFunctionsGetterCollision,
@@ -304,7 +305,8 @@ export class TerraformProviderGenerator {
     provider: ProviderName,
     model: ProviderFunctionsModel,
   ): string {
-    const filePath = `providers/${provider}/provider-functions/index.ts`;
+    // Folder name is constrained - see PROVIDER_FUNCTIONS_FOLDER_NAME.
+    const filePath = `providers/${provider}/${PROVIDER_FUNCTIONS_FOLDER_NAME}/index.ts`;
     this.code.openFile(filePath);
     this.code.line(`// generated from provider function schema`);
     this.code.line();

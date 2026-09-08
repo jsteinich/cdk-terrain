@@ -96,8 +96,20 @@ export interface ProviderFunctionModel {
 }
 
 /**
+ * Folder (and jsii submodule) holding a provider's generated functions
+ * wrapper, emitted as a sibling of `provider/` under `providers/<provider>/`.
+ *
+ * Must not start with `provider`: jsii-pacmak <= 1.135.0 computes Python
+ * cross-submodule imports with a prefix test that has no `.`-boundary check,
+ * so `provider_functions` reads as a child of `provider` and emits an import
+ * for a module that is never written. Fixed upstream in pacmak 1.136.0; this
+ * repo pins 1.128.0.
+ */
+export const PROVIDER_FUNCTIONS_FOLDER_NAME = "functions";
+
+/**
  * All provider-defined functions of a single provider, mapped to a single
- * generated `providers/<provider>/provider-functions/index.ts` file.
+ * generated `providers/<provider>/functions/index.ts` file.
  */
 export interface ProviderFunctionsModel {
   readonly providerName: string;
@@ -843,7 +855,7 @@ export function assertNoFunctionsGetterCollision(
 }
 
 /**
- * Builds the model for a provider's `provider-functions/index.ts` file from
+ * Builds the model for a provider's `functions/index.ts` file from
  * its provider schema `functions` map. Returns `undefined` when the provider
  * declares no functions - callers should skip emitting the file entirely.
  */

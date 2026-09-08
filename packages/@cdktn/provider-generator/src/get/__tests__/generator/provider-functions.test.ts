@@ -7,11 +7,43 @@ import {
   assertNoFunctionsGetterCollision,
   buildProviderFunctionsModel,
 } from "../../generator/models/provider-function-model";
-import { CodeMaker } from "codemaker";
+import { CodeMaker, toSnakeCase } from "codemaker";
 import { FunctionSignature } from "@cdktn/commons";
 import { createTmpHelper } from "../util";
 
 const tmp = createTmpHelper();
+
+/**
+ * Verbatim copy of jsii-pacmak's Python cross-submodule import path
+ * calculation (jsii-pacmak@1.128.0
+ * `lib/targets/python/type-name.ts#relativeImportPath`), including the
+ * `startsWith` test that is missing a `.`-boundary check. Copied rather than
+ * approximated so the assertion below fails for exactly the layouts pacmak
+ * mis-renders.
+ */
+function pacmakRelativeImportPath(fromPkg: string, toPkg: string): string {
+  if (toPkg.startsWith(fromPkg)) {
+    return `.${toPkg.substring(fromPkg.length + 1)}`;
+  }
+  const fromPkgParent = fromPkg.substring(0, fromPkg.lastIndexOf("."));
+  return `.${pacmakRelativeImportPath(fromPkgParent, toPkg)}`;
+}
+
+/**
+ * Resolves a Python relative import specifier (`.x`, `..x`, ...) written
+ * inside the package `fromPkg` to the absolute module it names. One leading
+ * dot means "this package", each further dot climbs one level.
+ */
+function resolveRelativeImport(fromPkg: string, specifier: string): string {
+  const dots = /^\.*/.exec(specifier)![0].length;
+  const tail = specifier.slice(dots);
+  const segments = fromPkg.split(".");
+  const base = segments.slice(0, segments.length - (dots - 1));
+  return [...base, ...(tail ? [tail] : [])].join(".");
+}
+
+/** jsii's submodule name -> Python module name mapping. */
+const pythonModuleName = (submoduleName: string) => toSnakeCase(submoduleName);
 
 test("generate provider functions for the time provider (real terraform 1.15.6 schema fragment)", async () => {
   const code = new CodeMaker();
@@ -26,7 +58,7 @@ test("generate provider functions for the time provider (real terraform 1.15.6 s
   await code.save(workdir);
 
   const providerFunctionsOutput = fs.readFileSync(
-    path.join(workdir, "providers/time/provider-functions/index.ts"),
+    path.join(workdir, "providers/time/functions/index.ts"),
     "utf-8",
   );
   expect(providerFunctionsOutput).toMatchSnapshot("time-provider-functions");
@@ -48,6 +80,76 @@ test("generate provider functions for the time provider (real terraform 1.15.6 s
     "utf-8",
   );
   expect(providerLazyIndex).toMatchSnapshot("provider-lazy-index");
+});
+
+// Regression test for the Python bindings of a provider that declares
+// provider-defined functions.
+//
+// The provider class lives in the `provider` jsii submodule and imports the
+// functions wrapper class from a sibling submodule. jsii-pacmak renders that
+// cross-submodule reference in Python as a *relative* import, computed by
+// `relativeImportPath` - which decides "is the target a child of me?" with a
+// bare `toPkg.startsWith(fromPkg)`, no `.`-boundary check. A sibling
+// submodule whose Python name merely string-prefixes the importing one is
+// therefore mistaken for a child, and pacmak emits an import of a module
+// that was never written to disk. That is what a `provider-functions` folder
+// did: submodule `<provider>.provider_functions` string-prefixes
+// `<provider>.provider`, so `<provider>/provider/__init__.py` got
+// `from .functions import ...` and importing the provider raised
+// ModuleNotFoundError (Go/Java/C# are unaffected - they use fully qualified
+// names and never compute a relative path).
+//
+// Rather than assert the folder name, this reproduces pacmak's own
+// calculation over the emitted layout and checks the import it would write
+// actually resolves to the emitted functions submodule.
+test("the emitted layout makes jsii-pacmak's Python relative import from the provider submodule resolve to the functions submodule", async () => {
+  const code = new CodeMaker();
+  const workdir = tmp("provider-functions-python-layout.test");
+  const spec = JSON.parse(
+    fs.readFileSync(
+      path.join(__dirname, "fixtures", "provider-functions.test.fixture.json"),
+      "utf-8",
+    ),
+  );
+  new TerraformProviderGenerator(code, spec).generateAll();
+  await code.save(workdir);
+
+  // The folder the provider class imports the functions wrapper from, read
+  // back out of the generated source instead of hard-coded.
+  const providerOutput = fs.readFileSync(
+    path.join(workdir, "providers/time/provider/index.ts"),
+    "utf-8",
+  );
+  const importMatch = /from '\.\.\/([^/]+)\/index'/.exec(providerOutput);
+  expect(importMatch).not.toBeNull();
+  const functionsFolder = importMatch![1];
+
+  // ...and it has to be a submodule the root index actually exports, or
+  // there would be no Python package for it at all.
+  const providerIndex = fs.readFileSync(
+    path.join(workdir, "providers/time/index.ts"),
+    "utf-8",
+  );
+  const submodules = new Map(
+    [
+      ...providerIndex.matchAll(
+        /export \* as (\w+) from '\.\/([^/]+)\/index'/g,
+      ),
+    ].map((m) => [m[2], m[1]]),
+  );
+  expect(submodules.has("provider")).toBe(true);
+  expect(submodules.has(functionsFolder)).toBe(true);
+
+  // Python module names of the two submodules, under the provider's own
+  // Python root package (`imports.<provider>` in a real project).
+  const root = "time";
+  const providerPkg = `${root}.${pythonModuleName(submodules.get("provider")!)}`;
+  const functionsPkg = `${root}.${pythonModuleName(
+    submodules.get(functionsFolder)!,
+  )}`;
+
+  const specifier = pacmakRelativeImportPath(providerPkg, functionsPkg);
+  expect(resolveRelativeImport(providerPkg, specifier)).toBe(functionsPkg);
 });
 
 describe("generate provider functions covering variadic parameters, primitive/list returns, and a 'default' parameter name", () => {
@@ -72,7 +174,7 @@ describe("generate provider functions covering variadic parameters, primitive/li
     await code.save(workdir);
 
     providerFunctionsOutput = fs.readFileSync(
-      path.join(workdir, "providers/example/provider-functions/index.ts"),
+      path.join(workdir, "providers/example/functions/index.ts"),
       "utf-8",
     );
     providerIndex = fs.readFileSync(

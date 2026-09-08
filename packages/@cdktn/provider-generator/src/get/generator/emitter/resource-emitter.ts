@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc
 // SPDX-License-Identifier: MPL-2.0
 import { CodeMaker } from "codemaker";
-import { ResourceModel } from "../models";
+import { PROVIDER_FUNCTIONS_FOLDER_NAME, ResourceModel } from "../models";
 import { AttributesEmitter } from "./attributes-emitter";
 import { sanitizedComment } from "../sanitized-comments";
 
@@ -19,12 +19,12 @@ export class ResourceEmitter {
     this.code.line();
 
     if (resource.isProvider && resource.providerFunctionsModel) {
-      // Sibling-directory import: providers/<provider>/provider/index.ts
-      // (the emitted file) and providers/<provider>/provider-functions/
-      // index.ts are siblings under providers/<provider>/, so unlike the
-      // child-folder struct imports this one has to step up a level.
+      // Sibling-directory import: provider/index.ts and functions/index.ts
+      // are siblings under providers/<provider>/, so unlike the child-folder
+      // struct imports this one steps up a level. The folder name is
+      // constrained - see PROVIDER_FUNCTIONS_FOLDER_NAME.
       this.code.line(
-        `import { ${resource.providerFunctionsModel.className} } from '../provider-functions/index${this.importExtension}';`,
+        `import { ${resource.providerFunctionsModel.className} } from '../${PROVIDER_FUNCTIONS_FOLDER_NAME}/index${this.importExtension}';`,
       );
     }
 

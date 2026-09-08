@@ -47,7 +47,7 @@ export class ResourceModel {
    * Only set (by provider-generator.ts) when isProvider is true and the
    * provider schema declares provider-defined functions - drives whether
    * ResourceEmitter emits the memoized `functions` getter and its
-   * cross-directory import of the sibling provider-functions/index.ts file.
+   * cross-directory import of the sibling functions/index.ts file.
    */
   public providerFunctionsModel?: ProviderFunctionsModel;
   public fileName: string;

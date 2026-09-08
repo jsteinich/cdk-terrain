@@ -5,7 +5,7 @@ import { anyValue, terraformFunction } from "./helpers";
 
 /**
  * Runtime entry point invoked by generated provider function bindings
- * (`providers/<provider>/provider-functions/index.ts`). Generated code only
+ * (`providers/<provider>/functions/index.ts`). Generated code only
  * imports the public `cdktn` package root, so this is the single chokepoint
  * through which every provider-defined function call flows.
  */
