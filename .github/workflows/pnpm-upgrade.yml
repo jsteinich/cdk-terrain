@@ -56,9 +56,16 @@ jobs:
           ncu --upgrade --reject=@types/node,@types/fs-extra,constructs,typescript,@types/prettier --target=minor \
             --packageManager pnpm --dep prod,dev,optional,peer --no-deprecated
 
-      # Refresh the lockfile after the ncu edits above (necessary for "pnpm update" to run)
+      # Refresh the lockfile after the ncu edits above (necessary for "pnpm update" to run).
+      #
+      # An upgrade can pull in a new transitive dependency whose build script is not in
+      # `allowBuilds`, which pnpm reports as ERR_PNPM_IGNORED_BUILDS and treats as fatal.
+      # Whether to approve that build is a judgment call for whoever reviews the resulting
+      # diff, so failing here is the wrong place for it: it drops the whole upgrade PR and
+      # hides what the upgrade would have been. Downgrade it to a warning (still visible in
+      # this job's log) and let the PR's own `pnpm ci`, which stays strict, gate the merge.
       - name: Run "pnpm install"
-        run: pnpm install --prefer-offline --no-frozen-lockfile
+        run: pnpm install --prefer-offline --no-frozen-lockfile --config.strictDepBuilds=false
 
       # Next, create and upload the changes as a patch file. This will later be downloaded to create a pull request
       # Creating a pull request requires write permissions and it's best to keep write privileges isolated.
@@ -219,9 +226,16 @@ jobs:
             --target=minor \
             --packageManager pnpm --dep prod,dev,optional,peer --no-deprecated
 
-      # Refresh the lockfile after the ncu edits above (necessary for "pnpm update" to run)
+      # Refresh the lockfile after the ncu edits above (necessary for "pnpm update" to run).
+      #
+      # An upgrade can pull in a new transitive dependency whose build script is not in
+      # `allowBuilds`, which pnpm reports as ERR_PNPM_IGNORED_BUILDS and treats as fatal.
+      # Whether to approve that build is a judgment call for whoever reviews the resulting
+      # diff, so failing here is the wrong place for it: it drops the whole upgrade PR and
+      # hides what the upgrade would have been. Downgrade it to a warning (still visible in
+      # this job's log) and let the PR's own `pnpm ci`, which stays strict, gate the merge.
       - name: Run "pnpm install"
-        run: pnpm install --prefer-offline --no-frozen-lockfile
+        run: pnpm install --prefer-offline --no-frozen-lockfile --config.strictDepBuilds=false
 
       - name: Mint CDKTN maintainers App token
         id: app-token
@@ -300,9 +314,16 @@ jobs:
             --filter='jsii,jsii-pacmak,jsii-rosetta,jsii-docgen,codemaker,constructs' \
             --target=minor \
             --packageManager pnpm --dep prod,dev,optional,peer --no-deprecated
-      # Refresh the lockfile after the ncu edits above (necessary for "pnpm update" to run)
+      # Refresh the lockfile after the ncu edits above (necessary for "pnpm update" to run).
+      #
+      # An upgrade can pull in a new transitive dependency whose build script is not in
+      # `allowBuilds`, which pnpm reports as ERR_PNPM_IGNORED_BUILDS and treats as fatal.
+      # Whether to approve that build is a judgment call for whoever reviews the resulting
+      # diff, so failing here is the wrong place for it: it drops the whole upgrade PR and
+      # hides what the upgrade would have been. Downgrade it to a warning (still visible in
+      # this job's log) and let the PR's own `pnpm ci`, which stays strict, gate the merge.
       - name: Run "pnpm install"
-        run: pnpm install --prefer-offline --no-frozen-lockfile
+        run: pnpm install --prefer-offline --no-frozen-lockfile --config.strictDepBuilds=false
 
       - name: Mint CDKTN maintainers App token
         id: app-token
