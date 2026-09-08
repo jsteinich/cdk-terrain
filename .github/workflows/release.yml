@@ -243,7 +243,7 @@ jobs:
             "@cdktn/commons",
             "@cdktn/cli-core",
           ]
-        terraform_version: ["1.6.5", "1.5.7"]
+        terraform_version: ["1.16.1", "1.5.7"]
     with:
       concurrency_group_prefix: release
       package: ${{ matrix.package }}
@@ -270,7 +270,7 @@ jobs:
             "@cdktn/commons",
             "@cdktn/cli-core",
           ]
-        terraform_version: ["1.6.5", "1.5.7"]
+        terraform_version: ["1.16.1", "1.5.7"]
     with:
       concurrency_group_prefix: release-next
       package: ${{ matrix.package }}
