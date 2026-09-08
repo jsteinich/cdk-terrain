@@ -208,6 +208,27 @@ describe("collectModuleProviderAliases", () => {
     ]);
   });
 
+  it("reads aliases a module spread across .tf and .tf.json files", () => {
+    // hcl2json merges a .tf.json file into the parsed HCL by recursing into
+    // the HCL block array, so the JSON half ends up as a named property on
+    // that array rather than another entry in it
+    const parsed: any = {
+      terraform: [
+        { required_providers: [{ aws: { source: "hashicorp/aws" } }] },
+      ],
+    };
+    parsed.terraform.required_providers = {
+      null: {
+        source: "hashicorp/null",
+        configuration_aliases: ["null.extra"],
+      },
+    };
+
+    expect(collectModuleProviderAliases(parsed)).toEqual([
+      { localName: "null", alias: "extra", source: "hashicorp/null" },
+    ]);
+  });
+
   it("ignores entries that are not provider configuration references", () => {
     const parsed = {
       terraform: {

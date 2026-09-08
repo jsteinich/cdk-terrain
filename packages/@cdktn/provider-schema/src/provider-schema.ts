@@ -467,14 +467,34 @@ const toArray = <T>(item: T | T[] | undefined | null): T[] => {
 };
 
 /**
+ * Every occurrence of a block that hcl2json produced under one key.
+ *
+ * HCL blocks come back as an array with an entry per occurrence, a .tf.json
+ * block as a plain object. A module mixing both syntaxes gets a third shape:
+ * hcl2json merges the JSON file into the parsed HCL, and its deepMerge
+ * recurses into the HCL array instead of appending to it, leaving the JSON
+ * contribution hanging off the array as named properties. Those properties
+ * are an occurrence of their own - and one that neither iterating the array
+ * nor JSON.stringify would ever show.
+ */
+const blockOccurrences = (block: any): any[] => {
+  if (block === undefined || block === null) return [];
+  if (!Array.isArray(block)) return [block];
+
+  const merged = Object.fromEntries(
+    Object.entries(block).filter(([key]) => !/^\d+$/.test(key)),
+  );
+
+  return Object.keys(merged).length > 0 ? [...block, merged] : [...block];
+};
+
+/**
  * Collects the provider configurations a module requires its caller to pass
  * in, from the hcl2json representation of the module's directory.
  *
- * hcl2json represents every HCL block as an array (one entry per occurrence
- * across the module's files), so a module may declare `required_providers` in
- * more than one `terraform` block; all of them are considered. Blocks read
- * from a .tf.json module arrive unwrapped instead, and both shapes are
- * handled here.
+ * A module may declare `required_providers` in more than one `terraform`
+ * block, and may spread them across .tf and .tf.json files; every occurrence
+ * hcl2json reports is considered (see {@link blockOccurrences}).
  *
  * @internal exposed for testing
  */
@@ -484,8 +504,8 @@ export function collectModuleProviderAliases(
   const aliases: ModuleProviderAlias[] = [];
   const seen = new Set<string>();
 
-  for (const terraformBlock of toArray(parsedModule?.terraform)) {
-    for (const requiredProviders of toArray(
+  for (const terraformBlock of blockOccurrences(parsedModule?.terraform)) {
+    for (const requiredProviders of blockOccurrences(
       terraformBlock?.required_providers,
     )) {
       for (const declaration of Object.values(requiredProviders || {})) {
