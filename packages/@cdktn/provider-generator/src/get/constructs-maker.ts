@@ -315,6 +315,8 @@ export class ConstructsMaker {
   private readonly codeMakerOutdir: string;
   private readonly code: CodeMaker;
   private versions: { [providerName: string]: string | undefined };
+  /** Resource directory names emitted per provider folder during this run */
+  public emittedResourceFolders: { [providerName: string]: string[] };
 
   constructor(
     private readonly options: GetOptions,
@@ -328,6 +330,7 @@ export class ConstructsMaker {
     fs.mkdirpSync(this.codeMakerOutdir);
     this.code = new CodeMaker();
     this.versions = {};
+    this.emittedResourceFolders = {};
   }
   private async generateTypescriptProvider(
     target: ConstructsMakerProviderTarget,
@@ -340,6 +343,10 @@ export class ConstructsMaker {
     generator.generate(target);
 
     this.versions = { ...this.versions, ...generator.versions };
+    this.emittedResourceFolders = {
+      ...this.emittedResourceFolders,
+      ...generator.emittedResourceFolders,
+    };
     endTSTimer();
   }
 
@@ -595,6 +602,62 @@ export class ConstructsMaker {
     });
   }
 
+  /**
+   * Delete resource directories under `providers/` that this run did not emit, so each provider folder holds
+   * exactly the resources in the version it was generated against.
+   *
+   * Walks only providers present in `emittedResourceFolders`, keeping any provider this run skipped. Within those,
+   * removes every subdirectory not emitted and leaves provider-level files (`index.ts`, `lazy-index.ts`) in place.
+   * Deletes files, so it must run after `save()` has written the current run's output.
+   *
+   * TypeScript only: `providers/<name>/<resource>/` maps one-to-one onto the emitted index exports. Other languages
+   * co-locate providers and modules in the same folders, which makes a dropped resource indistinguishable from a
+   * hand-written construct.
+   */
+  public async removeOrphanedResourceFolders() {
+    if (!this.isJavascriptTarget) {
+      return;
+    }
+
+    for (const [provider, emittedFolders] of Object.entries(
+      this.emittedResourceFolders,
+    )) {
+      const providerFolder = path.resolve(
+        this.codeMakerOutdir,
+        "providers",
+        provider,
+      );
+
+      let entries: string[] = [];
+      try {
+        entries = await fs.readdir(providerFolder);
+      } catch (e) {
+        logger.debug(
+          `Could not list resource folders in '${providerFolder}': ${e}`,
+        );
+        continue;
+      }
+
+      const expected = new Set(emittedFolders);
+      for (const entry of entries) {
+        if (expected.has(entry)) {
+          continue;
+        }
+
+        const entryPath = path.resolve(providerFolder, entry);
+        if (!fs.statSync(entryPath).isDirectory()) {
+          // Leave index.ts / lazy-index.ts and any other provider-level files alone.
+          continue;
+        }
+
+        logger.debug(
+          `Removing orphaned resource folder '${entry}' from provider '${provider}': it was not emitted for the current provider version`,
+        );
+        await fs.remove(entryPath);
+      }
+    }
+  }
+
   // emits a constraints.json file with a map of the used provider fqpns and version constraints
   // this is used for caching purposes
   private emitConstraintsFile(
@@ -757,6 +820,7 @@ a NODE_OPTIONS variable, we won't override it. Hence, the provider generation mi
 
     if (this.isJavascriptTarget) {
       await this.save();
+      await this.removeOrphanedResourceFolders();
     }
 
     if (!this.isJavascriptTarget || this.options.outputJsii) {
