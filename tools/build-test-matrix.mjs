@@ -89,6 +89,15 @@ const targets = absoluteTargets
   .map((p) => (p.startsWith(testDirPrefix) ? p.slice(testDirPrefix.length) : p))
   .sort();
 
+// A key that matches no target would make the guards below silently inert.
+for (const key of [...Object.keys(pinnedRuntimes), ...terraformOnly]) {
+  if (!targets.includes(key)) {
+    throw new Error(
+      `"${key}" is configured in pinnedRuntimes or terraformOnly but is not a discovered test target.`,
+    );
+  }
+}
+
 /**
  * Matches test files that exercise the HCL synth path with real assertions. Keep in sync with the HCL-positive
  * decorators exported by `test/test-helper.ts`.
