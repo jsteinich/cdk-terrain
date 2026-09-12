@@ -36,6 +36,11 @@ const REGISTRY_URL = "http://localhost:4873/";
 // inline as npm's per-registry config key.
 const NPM_AUTH_ARG = `--${REGISTRY_URL.replace(/^https?:/, "")}:_authToken=dummy`;
 
+// A healthy publish to the local registry takes about a second; anything past
+// this is a stall, not slowness.
+const PUBLISH_TIMEOUT_MS = 2 * 60 * 1000;
+const PUBLISH_ATTEMPTS = 3;
+
 process.env.CDKTF_DIST = cdktnDist;
 
 /** @type {import("node:http").Server | null} */
@@ -128,14 +133,42 @@ try {
   const tgzGlob = join(cdktnDist, "js", "*.tgz").replaceAll("\\", "/");
   for await (const pkg of glob(tgzGlob)) {
     console.log(pkg);
-    try {
-      await execa(
-        "npm",
-        ["publish", `--registry=${REGISTRY_URL}`, NPM_AUTH_ARG, "--force", pkg],
-        { stdio: ["ignore", "inherit", "inherit"] },
-      );
-    } catch {
-      await fail(`npm publish failed for ${pkg}`);
+    // Bound each publish: a stalled Verdaccio leaves npm waiting on the socket
+    // forever, which otherwise burns the job's whole 60m timeout.
+    for (let attempt = 1; attempt <= PUBLISH_ATTEMPTS; attempt++) {
+      try {
+        await execa(
+          "npm",
+          [
+            "publish",
+            `--registry=${REGISTRY_URL}`,
+            NPM_AUTH_ARG,
+            "--force",
+            pkg,
+          ],
+          {
+            stdio: ["ignore", "inherit", "inherit"],
+            timeout: PUBLISH_TIMEOUT_MS,
+          },
+        );
+        break;
+      } catch (err) {
+        if (attempt === PUBLISH_ATTEMPTS) {
+          await fail(
+            `npm publish failed for ${pkg} after ${PUBLISH_ATTEMPTS} attempts: ${
+              err.timedOut
+                ? `timed out after ${PUBLISH_TIMEOUT_MS}ms`
+                : err.message
+            }`,
+          );
+        }
+        console.log(
+          `Publish attempt ${attempt} for ${pkg} failed${
+            err.timedOut ? " (timed out)" : ""
+          }, retrying in ${attempt * 5}s...`,
+        );
+        await sleep(attempt * 5 * 1000);
+      }
     }
   }
 
