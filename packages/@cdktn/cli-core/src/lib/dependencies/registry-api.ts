@@ -3,7 +3,7 @@
 import { fetch, ProxyAgent } from "undici";
 import { ProviderConstraint } from "./dependency-manager";
 import * as semver from "semver";
-import { Errors } from "@cdktn/commons";
+import { Errors, Registry, TERRAFORM_REGISTRY } from "@cdktn/commons";
 
 type VersionsReturnType = {
   id: string; // e.g. hashicorp/aws
@@ -16,10 +16,11 @@ type VersionsReturnType = {
 
 async function fetchVersions(
   constraint: ProviderConstraint,
+  registry: Registry,
 ): Promise<VersionsReturnType["versions"] | null> {
   const proxy = process.env.http_proxy || process.env.HTTP_PROXY;
   const dispatcher = proxy ? new ProxyAgent(proxy) : undefined;
-  const url = `https://registry.terraform.io/v1/providers/${constraint.namespace}/${constraint.name}/versions`;
+  const url = `https://${registry.hostname}/v1/providers/${constraint.namespace}/${constraint.name}/versions`;
 
   const result = await fetch(url, {
     dispatcher,
@@ -41,11 +42,15 @@ async function fetchVersions(
  * returns the latest available version for the provider in the constraint
  * the version of the constraint is ignored
  * returns null, if the provider does not exist
+ *
+ * Both registries expose the same /v1/providers/<ns>/<name>/versions shape,
+ * and their version lists differ, so the project's target decides which to ask.
  */
 export async function getLatestVersion(
   constraint: ProviderConstraint,
+  registry: Registry = TERRAFORM_REGISTRY,
 ): Promise<string | null> {
-  const versions = await fetchVersions(constraint);
+  const versions = await fetchVersions(constraint, registry);
   if (!versions) {
     return null;
   }

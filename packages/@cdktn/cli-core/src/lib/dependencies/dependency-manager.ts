@@ -6,6 +6,8 @@ import {
   IsErrorType,
   logger,
   TerraformDependencyConstraint,
+  Registry,
+  TERRAFORM_REGISTRY,
 } from "@cdktn/commons";
 import { toPascalCase, toSnakeCase } from "codemaker";
 import { CdktfConfig } from "../cdktf-config";
@@ -140,6 +142,7 @@ export class DependencyManager {
     private readonly targetLanguage: Language,
     private cdktfVersion: string,
     private readonly projectDirectory: string,
+    private readonly registry: Registry = TERRAFORM_REGISTRY,
   ) {
     this.packageManager = PackageManager.forLanguage(
       targetLanguage,
@@ -363,7 +366,7 @@ export class DependencyManager {
     );
 
     if (!constraint.version && constraint.isFromTerraformRegistry()) {
-      const v = await getLatestVersion(constraint);
+      const v = await getLatestVersion(constraint, this.registry);
       if (v) {
         constraint = new ProviderConstraint(
           constraint.source,
@@ -372,7 +375,7 @@ export class DependencyManager {
         );
       } else {
         throw Errors.Usage(
-          `Could not find a version for the provider '${constraint}' in the public registry. This could be due to a typo, please take a look at https://registry.terraform.io/browse/providers to find all supported providers.`,
+          `Could not find a version for the provider '${constraint}' in the public registry. This could be due to a typo, please take a look at ${this.registry.browseUrl} to find all supported providers.`,
         );
       }
     }
