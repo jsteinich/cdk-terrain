@@ -3,7 +3,12 @@
 import { fetch, ProxyAgent } from "undici";
 import { ProviderConstraint } from "./dependency-manager";
 import * as semver from "semver";
-import { Errors, Registry, TERRAFORM_REGISTRY } from "@cdktn/commons";
+import {
+  Errors,
+  Registry,
+  TERRAFORM_REGISTRY,
+  registryForHostname,
+} from "@cdktn/commons";
 
 type VersionsReturnType = {
   id: string; // e.g. hashicorp/aws
@@ -13,6 +18,17 @@ type VersionsReturnType = {
     platforms: unknown;
   }[];
 };
+
+/**
+ * The registry a constraint resolves against: the one its own hostname names.
+ * A constraint is normalized before it gets here, so this is either the host
+ * the author wrote explicitly or the project's target registry.
+ */
+export function registryForConstraint(
+  constraint: ProviderConstraint,
+): Registry {
+  return registryForHostname(constraint.hostname) ?? TERRAFORM_REGISTRY;
+}
 
 async function fetchVersions(
   constraint: ProviderConstraint,
@@ -48,9 +64,11 @@ async function fetchVersions(
  */
 export async function getLatestVersion(
   constraint: ProviderConstraint,
-  registry: Registry = TERRAFORM_REGISTRY,
 ): Promise<string | null> {
-  const versions = await fetchVersions(constraint, registry);
+  const versions = await fetchVersions(
+    constraint,
+    registryForConstraint(constraint),
+  );
   if (!versions) {
     return null;
   }

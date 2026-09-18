@@ -35,17 +35,12 @@ export async function providerAdd({
     cdktfVersion || (await determineDeps(cdktfVersion, dist)).cdktf_version;
 
   const registry = registryForTargetVersions(readConfigSync().targetVersions);
-  const manager = new DependencyManager(
-    language,
-    version,
-    projectDirectory,
-    registry,
-  );
+  const manager = new DependencyManager(language, version, projectDirectory);
 
   let needsGet = false;
 
   for (const provider of providers) {
-    const constraint = ProviderConstraint.fromConfigEntry(provider);
+    const constraint = ProviderConstraint.fromConfigEntry(provider, registry);
     if (forceLocal) {
       needsGet = true;
       await manager.addLocalProvider(constraint);
