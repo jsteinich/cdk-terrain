@@ -39,14 +39,41 @@ describe("getLatestVersion", () => {
     expect(await getLatestVersion(constraint)).toBe("3.7.2");
   });
 
-  it("asks the OpenTofu registry when that is the project's target", async () => {
+  it("asks the OpenTofu registry when the project targets it", async () => {
     mockAgent
       .get("https://registry.opentofu.org")
       .intercept({ path: versionsPath })
       .reply(200, { ...body, versions: [{ version: "3.9.1" }] });
 
-    const constraint = ProviderConstraint.fromConfigEntry("hashicorp/random");
-    expect(await getLatestVersion(constraint, OPENTOFU_REGISTRY)).toBe("3.9.1");
+    // A bare source expands against the project's registry.
+    const constraint = ProviderConstraint.fromConfigEntry(
+      "hashicorp/random",
+      OPENTOFU_REGISTRY,
+    );
+    expect(constraint.source).toBe("registry.opentofu.org/hashicorp/random");
+    expect(await getLatestVersion(constraint)).toBe("3.9.1");
+  });
+
+  it("honours an explicitly qualified source over the project's target", async () => {
+    mockAgent
+      .get("https://registry.opentofu.org")
+      .intercept({ path: versionsPath })
+      .reply(200, { ...body, versions: [{ version: "3.9.1" }] });
+
+    // OpenTofu users have been told to fully qualify; that must keep working
+    // even when the project declares no targetVersions.
+    const constraint = ProviderConstraint.fromConfigEntry(
+      "registry.opentofu.org/hashicorp/random",
+    );
+    expect(constraint.isFromPublicRegistry()).toBe(true);
+    expect(await getLatestVersion(constraint)).toBe("3.9.1");
+  });
+
+  it("treats a private registry as unqueryable", () => {
+    const constraint = ProviderConstraint.fromConfigEntry(
+      "registry.example.com/acme/thing",
+    );
+    expect(constraint.isFromPublicRegistry()).toBe(false);
   });
 
   it("returns null for a provider the registry does not have", async () => {
@@ -55,8 +82,11 @@ describe("getLatestVersion", () => {
       .intercept({ path: versionsPath })
       .reply(404, "");
 
-    const constraint = ProviderConstraint.fromConfigEntry("hashicorp/random");
-    expect(await getLatestVersion(constraint, OPENTOFU_REGISTRY)).toBeNull();
+    const constraint = ProviderConstraint.fromConfigEntry(
+      "hashicorp/random",
+      OPENTOFU_REGISTRY,
+    );
+    expect(await getLatestVersion(constraint)).toBeNull();
   });
 });
 
