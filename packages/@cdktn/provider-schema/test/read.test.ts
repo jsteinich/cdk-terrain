@@ -18,7 +18,7 @@ describe.skip("read", () => {
     it("can generate a provider schema", async () => {
       const schema = await readSchema([
         new ConstructsMakerProviderTarget(
-          new TerraformProviderConstraint("kreuzwerker/docker@=3.0.2"),
+          new TerraformProviderConstraint("kreuzwerker/docker@=3.9.0"),
           Language.TYPESCRIPT,
         ),
       ]);
@@ -34,7 +34,7 @@ describe.skip("read", () => {
     it("can load cached value", async () => {
       await withTempDir("cache", async () => {
         const cached = { my: "schema" };
-        const cacheKey = "kreuzwerker%2Fdocker@%3D3.0.2";
+        const cacheKey = "kreuzwerker%2Fdocker@%3D3.9.0";
         await fs.writeFile(
           path.join(process.cwd(), `${cacheKey}.json`),
           JSON.stringify(cached),
@@ -43,7 +43,7 @@ describe.skip("read", () => {
         const schema = await readSchema(
           [
             new ConstructsMakerProviderTarget(
-              new TerraformProviderConstraint("kreuzwerker/docker@=3.0.2"),
+              new TerraformProviderConstraint("kreuzwerker/docker@=3.9.0"),
               Language.TYPESCRIPT,
             ),
           ],

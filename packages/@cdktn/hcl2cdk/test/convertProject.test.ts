@@ -14,7 +14,7 @@ import { createTmpHelper } from "./helpers/tmp";
 
 const tmp = createTmpHelper();
 
-const providerRequirements = ["kreuzwerker/docker@ ~>2.15.0"];
+const providerRequirements = ["kreuzwerker/docker@ =3.9.0"];
 const CDKTF_CLI = path.resolve(
   __dirname,
   "..",
@@ -192,7 +192,7 @@ describe.skip("convertProject", () => {
         required_providers {
           docker = {
             source  = "kreuzwerker/docker"
-            version = "2.14.0"
+            version = "3.9.0"
           }
         }
       }
@@ -208,7 +208,7 @@ describe.skip("convertProject", () => {
           }
 
           resource "docker_container" "foo" {
-            image = docker_image.ubuntu.latest
+            image = docker_image.ubuntu.name
             name  = "foo"
           }`,
       ],
