@@ -171,7 +171,7 @@ function resources(plan: any) {
 }
 
 let cachedProviderSchema: any;
-describe.skip("convertProject", () => {
+describe("convertProject", () => {
   beforeAll(async () => {
     // Get all the provider schemas
     const { providerSchema } = await readSchema(
