@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
+import * as path from "path";
 import {
   Language,
   readConfigSync,
@@ -34,7 +35,11 @@ export async function providerAdd({
   const version =
     cdktfVersion || (await determineDeps(cdktfVersion, dist)).cdktf_version;
 
-  const registry = registryForTargetVersions(readConfigSync().targetVersions);
+  // Read the target project's config, not the caller's cwd - init() scaffolds
+  // into `destination` and calls this without changing directory.
+  const registry = registryForTargetVersions(
+    readConfigSync(path.join(projectDirectory, "cdktf.json")).targetVersions,
+  );
   const manager = new DependencyManager(language, version, projectDirectory);
 
   let needsGet = false;
