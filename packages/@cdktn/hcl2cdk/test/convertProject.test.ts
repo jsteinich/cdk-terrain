@@ -171,7 +171,12 @@ function resources(plan: any) {
 }
 
 let cachedProviderSchema: any;
-describe("convertProject", () => {
+// Skipped because the fixture's camptocamp/k3s/docker module uses the
+// module_variable_optional_attrs language experiment, removed in Terraform
+// 1.3. `getTerraformPlan` runs a real init, so this cannot pass on any
+// supported Terraform, and every published version of that module - up to
+// 1.0.1 - still uses it. Needs a different module in the fixture; see #461.
+describe.skip("convertProject", () => {
   beforeAll(async () => {
     // Get all the provider schemas
     const { providerSchema } = await readSchema(
