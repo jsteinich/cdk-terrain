@@ -3,62 +3,80 @@
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-import {
-  OPENTOFU_REGISTRY,
-  TERRAFORM_REGISTRY,
-  readConfigSync,
-  registryForTargetVersions,
-} from "@cdktn/commons";
+import { Language } from "@cdktn/commons";
+import { DependencyManager } from "../../lib/dependencies/dependency-manager";
+import { providerAdd } from "../../lib/provider-add";
 
 // init() scaffolds into a destination and calls providerAdd with that
-// directory without changing cwd, so the registry must come from the project
-// being written to, not from wherever the CLI happens to be running.
-describe("registry selection for a project directory", () => {
+// directory without changing cwd, so the registry has to come from the project
+// being written to rather than from wherever the CLI runs.
+//
+// Spying on addLocalProvider rather than mocking the module keeps the real
+// ProviderConstraint doing the normalizing, so the source it receives is what
+// proves which registry providerAdd selected.
+describe("providerAdd registry selection", () => {
   let tmpRoot: string;
-  let cwdProject: string;
-  let targetProject: string;
   let previousCwd: string;
+  let addLocalProvider: jest.SpyInstance;
 
-  beforeEach(() => {
-    tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "provider-add-registry"));
-    cwdProject = path.join(tmpRoot, "cwd-project");
-    targetProject = path.join(tmpRoot, "target-project");
-    fs.mkdirpSync(cwdProject);
-    fs.mkdirpSync(targetProject);
-
-    // The directory the CLI runs from targets Terraform...
+  function project(name: string, targetVersions?: Record<string, string>) {
+    const dir = path.join(tmpRoot, name);
+    fs.mkdirpSync(dir);
     fs.writeFileSync(
-      path.join(cwdProject, "cdktf.json"),
-      JSON.stringify({ language: "typescript", app: "npx tsx main.ts" }),
-    );
-    // ...while the project being written to targets OpenTofu only.
-    fs.writeFileSync(
-      path.join(targetProject, "cdktf.json"),
+      path.join(dir, "cdktf.json"),
       JSON.stringify({
         language: "typescript",
         app: "npx tsx main.ts",
-        targetVersions: { opentofu: ">=1.6.0" },
+        ...(targetVersions ? { targetVersions } : {}),
       }),
     );
+    return dir;
+  }
 
+  async function sourceAddedTo(projectDirectory: string) {
+    addLocalProvider.mockClear();
+    await providerAdd({
+      providers: ["hashicorp/random"],
+      language: Language.TYPESCRIPT,
+      projectDirectory,
+      cdktfVersion: "0.0.0", // non-empty, so determineDeps is never called
+      forceLocal: true,
+    });
+    expect(addLocalProvider).toHaveBeenCalledTimes(1);
+    return addLocalProvider.mock.calls[0][0].source as string;
+  }
+
+  beforeEach(() => {
+    tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "provider-add-registry"));
     previousCwd = process.cwd();
-    process.chdir(cwdProject);
+    addLocalProvider = jest
+      .spyOn(DependencyManager.prototype, "addLocalProvider")
+      .mockResolvedValue(undefined);
   });
 
   afterEach(() => {
+    addLocalProvider.mockRestore();
     process.chdir(previousCwd);
     fs.removeSync(tmpRoot);
   });
 
-  it("uses the target project's registry, not the cwd's", () => {
-    const fromTarget = registryForTargetVersions(
-      readConfigSync(path.join(targetProject, "cdktf.json")).targetVersions,
+  it("follows the project directory, not the cwd", async () => {
+    process.chdir(project("cwd-terraform"));
+    const destination = project("destination-opentofu", {
+      opentofu: ">=1.6.0",
+    });
+
+    expect(await sourceAddedTo(destination)).toBe(
+      "registry.opentofu.org/hashicorp/random",
     );
-    expect(fromTarget).toBe(OPENTOFU_REGISTRY);
   });
 
-  it("would pick the wrong registry if it read the cwd", () => {
-    const fromCwd = registryForTargetVersions(readConfigSync().targetVersions);
-    expect(fromCwd).toBe(TERRAFORM_REGISTRY);
+  it("does not let an OpenTofu cwd leak into a Terraform project", async () => {
+    process.chdir(project("cwd-opentofu", { opentofu: ">=1.6.0" }));
+    const destination = project("destination-terraform");
+
+    expect(await sourceAddedTo(destination)).toBe(
+      "registry.terraform.io/hashicorp/random",
+    );
   });
 });
