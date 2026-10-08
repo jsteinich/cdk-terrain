@@ -59,9 +59,19 @@ export function providerVersion(
   versionsFile: Record<string, string>,
   fqn: string,
 ): string | undefined {
-  return Object.entries(versionsFile).find(
+  const matches = Object.entries(versionsFile).filter(
     ([key]) => key.split("/").slice(1).join("/") === fqn,
-  )?.[1];
+  );
+  // More than one means one entry per registry host for the same provider (#483).
+  // Returning either would let a stale version pass silently.
+  if (matches.length > 1) {
+    throw new Error(
+      `versions.json has ${matches.length} entries for ${fqn}: ${matches
+        .map(([key, version]) => `${key}=${version}`)
+        .join(", ")}`,
+    );
+  }
+  return matches[0]?.[1];
 }
 
 export class QueryableStack {
