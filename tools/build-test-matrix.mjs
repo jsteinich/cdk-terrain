@@ -46,6 +46,18 @@ const pinnedRuntimes = {
     { product: "terraform", version: "1.16.1" },
     { product: "opentofu", version: "1.12.6" },
   ],
+  // These resolve providers through the CLI's own registry, so they are the ones that catch a regression in which
+  // registry we pick. The Terraform entries restate the `tested` default so adding OpenTofu does not drop a version.
+  "typescript/provider-add-command/test.ts": [
+    { product: "terraform", version: "1.5.7" },
+    { product: "terraform", version: "1.16.1" },
+    { product: "opentofu", version: "1.12.6" },
+  ],
+  "typescript/provider-upgrade-command/test.ts": [
+    { product: "terraform", version: "1.5.7" },
+    { product: "terraform", version: "1.16.1" },
+    { product: "opentofu", version: "1.12.6" },
+  ],
 };
 
 /**
@@ -84,8 +96,12 @@ const absoluteTargets = execFileSync(
   .map((line) => line.trim())
   .filter(Boolean);
 
-const testDirPrefix = `${testDir}/`;
+/** Matrix keys are posix-style, so normalise the separators jest emits on Windows. */
+const toPosix = (p) => p.replace(/\\/g, "/");
+
+const testDirPrefix = `${toPosix(testDir)}/`;
 const targets = absoluteTargets
+  .map(toPosix)
   .map((p) => (p.startsWith(testDirPrefix) ? p.slice(testDirPrefix.length) : p))
   .sort();
 
