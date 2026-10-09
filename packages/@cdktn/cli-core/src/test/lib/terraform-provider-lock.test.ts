@@ -3,7 +3,10 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-import { TerraformProviderLock } from "../../lib/terraform-provider-lock";
+import {
+  TerraformProviderLock,
+  lockAddressesFor,
+} from "../../lib/terraform-provider-lock";
 import { readFile, stat } from "fs/promises";
 import * as path from "path";
 import { ProviderConstraint } from "../../lib/dependencies/dependency-manager";
@@ -201,5 +204,68 @@ describe("TerraformProviderLock", () => {
 
     expect(await lock.hasProviderLockFile()).toBeFalsy();
     expect(stat).toHaveBeenCalledWith(path.join("test", ".terraform.lock.hcl"));
+  });
+});
+
+describe("lockAddressesFor", () => {
+  const lockedUnder = (name: string) =>
+    (readFile as jest.Mock).mockResolvedValueOnce(
+      generateProviderLockFileContents([
+        { name, version: "1.2.3", constraints: "1.2" },
+      ]),
+    );
+
+  /** Whether any address the CLI could have locked `source` under is in the lock. */
+  const isLocked = async (source: string) => {
+    const lock = new TerraformProviderLock("test");
+    for (const address of lockAddressesFor(source, "1.2")) {
+      if (await lock.hasMatchingProvider(address)) return true;
+    }
+    return false;
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("keeps a source that names a host to exactly that host", () => {
+    expect(
+      lockAddressesFor("registry.terraform.io/hashicorp/test").map(
+        (a) => a.source,
+      ),
+    ).toEqual(["registry.terraform.io/hashicorp/test"]);
+  });
+
+  it("offers every public registry for a bare source", () => {
+    expect(lockAddressesFor("hashicorp/test").map((a) => a.source)).toEqual([
+      "registry.terraform.io/hashicorp/test",
+      "registry.opentofu.org/hashicorp/test",
+    ]);
+  });
+
+  it("finds a bare source that Terraform locked", async () => {
+    lockedUnder("registry.terraform.io/hashicorp/test");
+    await expect(isLocked("hashicorp/test")).resolves.toBe(true);
+  });
+
+  it("finds a bare source that OpenTofu locked", async () => {
+    lockedUnder("registry.opentofu.org/hashicorp/test");
+    await expect(isLocked("hashicorp/test")).resolves.toBe(true);
+  });
+
+  // Matching on provider alone would report this as locked, skip init, and
+  // leave the CLI to fail on an address that is not in the lock file.
+  it("does not let a different public registry satisfy an explicit host", async () => {
+    lockedUnder("registry.opentofu.org/hashicorp/test");
+    await expect(
+      isLocked("registry.terraform.io/hashicorp/test"),
+    ).resolves.toBe(false);
+  });
+
+  it("does not let a public registry satisfy a private host", async () => {
+    lockedUnder("registry.terraform.io/hashicorp/test");
+    await expect(
+      isLocked("my.registry.example.com/hashicorp/test"),
+    ).resolves.toBe(false);
   });
 });

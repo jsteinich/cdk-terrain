@@ -6,7 +6,7 @@
 import path from "path";
 import fs from "fs/promises";
 import { ProviderConstraint } from "./dependencies/dependency-manager";
-import { logger } from "@cdktn/commons";
+import { PUBLIC_REGISTRIES, logger } from "@cdktn/commons";
 
 const TerraformLockFileName = ".terraform.lock.hcl";
 
@@ -21,6 +21,24 @@ type TerraformProviderLockFileData = {
     [name: string]: TerraformProviderLockFileEntry;
   };
 };
+
+/**
+ * Lock-file addresses that can satisfy a `required_providers` source. The CLI
+ * locks a source that names a host under exactly that host, and a bare source
+ * under whichever public registry it resolves bare sources from - which differs
+ * between Terraform and OpenTofu, so each public registry is a candidate.
+ */
+export function lockAddressesFor(
+  source: string,
+  version?: string,
+): ProviderConstraint[] {
+  if (source.split("/").length === 3) {
+    return [new ProviderConstraint(source, version)];
+  }
+  return PUBLIC_REGISTRIES.map(
+    (registry) => new ProviderConstraint(source, version, registry),
+  );
+}
 
 export class TerraformProviderLock {
   private _providerLockData: TerraformProviderLockFileData | null;
