@@ -204,7 +204,7 @@ describe("prebuilt-providers", () => {
       mockAgent
         .get("https://raw.githubusercontent.com")
         .intercept({
-          path: new RegExp(".*cdktn-repository-manager.*provider\.json"),
+          path: /.*cdktn-repository-manager.*provider\.json/,
           method: "GET",
         })
         .reply(200, { random: "hashicorp/random" });
