@@ -17,9 +17,11 @@ import {
   tryReadGeneratedConfigurationFile,
   tryRemoveGeneratedConfigurationFile,
 } from "./models/terraform-cli";
-import { ProviderConstraint } from "./dependencies/dependency-manager";
 import { terraformJsonSchema, TerraformStack } from "./terraform-json";
-import { TerraformProviderLock } from "./terraform-provider-lock";
+import {
+  TerraformProviderLock,
+  lockAddressesFor,
+} from "./terraform-provider-lock";
 import { convertConfigurationFile } from "./convert";
 
 export type StackUpdate =
@@ -300,14 +302,10 @@ export class CdktfStack {
     // Read required providers from the stack output
     const requiredProviders = this.parsedContent.terraform?.required_providers;
 
-    return Object.values(requiredProviders || {}).reduce(
-      (acc, obj) => {
-        const constraint = new ProviderConstraint(obj.source, obj.version);
-        acc[constraint.source] = constraint;
-        return acc;
-      },
-      {} as Record<string, ProviderConstraint>,
-    );
+    return Object.values(requiredProviders || {}).map((obj) => ({
+      version: obj.version,
+      addresses: lockAddressesFor(obj.source, obj.version),
+    }));
   }
 
   private async checkNeedsLockfileUpdate(): Promise<boolean> {
@@ -323,11 +321,15 @@ export class CdktfStack {
       return true;
     }
 
-    const requiredProviders = this.requiredProviders();
-
-    for (const provider of Object.values(requiredProviders)) {
-      const hasProvider = await lock.hasMatchingProvider(provider);
-      if (!hasProvider) {
+    for (const { addresses } of this.requiredProviders()) {
+      let locked = false;
+      for (const address of addresses) {
+        if (await lock.hasMatchingProvider(address)) {
+          locked = true;
+          break;
+        }
+      }
+      if (!locked) {
         // If we don't have a provider or version doesn't match, we need to init
         return true;
       }
@@ -355,7 +357,9 @@ export class CdktfStack {
         return false;
       }
 
-      const provider = allProviders[lockedConstraint.source];
+      const provider = allProviders.find(({ addresses }) =>
+        addresses.some(({ source }) => source === lockedConstraint.source),
+      );
       if (!provider) {
         // else no longer using this provider, so won't cause problems
         return;
