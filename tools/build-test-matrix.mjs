@@ -46,10 +46,14 @@ const pinnedRuntimes = {
     { product: "terraform", version: "1.16.1" },
     { product: "opentofu", version: "1.12.6" },
   ],
-  // Resolves providers through the CLI's own registry, so it catches a regression in which registry we pick. The
-  // Terraform entries restate the `tested` default so adding OpenTofu does not drop a version. Its sibling
-  // provider-upgrade-command is deliberately not pinned here: it fails under OpenTofu on #483.
+  // These resolve providers through the CLI's own registry, so they are the ones that catch a regression in which
+  // registry we pick. The Terraform entries restate the `tested` default so adding OpenTofu does not drop a version.
   "typescript/provider-add-command/test.ts": [
+    { product: "terraform", version: "1.5.7" },
+    { product: "terraform", version: "1.16.1" },
+    { product: "opentofu", version: "1.12.6" },
+  ],
+  "typescript/provider-upgrade-command/test.ts": [
     { product: "terraform", version: "1.5.7" },
     { product: "terraform", version: "1.16.1" },
     { product: "opentofu", version: "1.12.6" },
