@@ -42,6 +42,10 @@ const availableVersions = {
  * @type {Record<string, Array<{ product: "terraform" | "opentofu", version: string }>>}
  */
 const pinnedRuntimes = {
+  // Declares an OpenTofu-only target, so only the OpenTofu CLI is a meaningful pairing.
+  "typescript/opentofu-target/test.ts": [
+    { product: "opentofu", version: "1.12.6" },
+  ],
   "typescript/provider-features/test.ts": [
     { product: "terraform", version: "1.16.1" },
     { product: "opentofu", version: "1.12.6" },
