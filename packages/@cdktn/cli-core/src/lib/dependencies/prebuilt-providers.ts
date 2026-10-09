@@ -89,11 +89,17 @@ export async function getNpmPackageName(
 ): Promise<string | undefined> {
   const providers = await getAllPrebuiltProviders();
 
-  const entry = Object.entries(providers).find(
-    ([, p]) =>
-      ProviderConstraint.fromConfigEntry(p).source.toLowerCase() ===
-      constraint.source.toLowerCase(),
-  );
+  const entry = Object.entries(providers).find(([, p]) => {
+    // The prebuilt list is published against the Terraform registry while
+    // `constraint` resolves against whatever the project targets, so comparing
+    // full sources never matched for an OpenTofu-only project. A prebuilt
+    // package identifies a provider, not a registry.
+    const prebuilt = ProviderConstraint.fromConfigEntry(p);
+    return (
+      prebuilt.namespace.toLowerCase() === constraint.namespace.toLowerCase() &&
+      prebuilt.name.toLowerCase() === constraint.name.toLowerCase()
+    );
+  });
   if (!entry) {
     return undefined; // no pre-built provider found for this constraint
   }
