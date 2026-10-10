@@ -50,8 +50,8 @@ const pinnedRuntimes = {
     { product: "terraform", version: "1.16.1" },
     { product: "opentofu", version: "1.12.6" },
   ],
-  // These resolve providers through the CLI's own registry, so they are the ones that catch a regression in which
-  // registry we pick. The Terraform entries restate the `tested` default so adding OpenTofu does not drop a version.
+  // Provider commands driven by the OpenTofu CLI. Their projects declare no targetVersions, so registry selection
+  // stays Terraform-based; opentofu-target covers that. The Terraform entries restate the `tested` default.
   "typescript/provider-add-command/test.ts": [
     { product: "terraform", version: "1.5.7" },
     { product: "terraform", version: "1.16.1" },
