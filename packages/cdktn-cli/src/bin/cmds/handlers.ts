@@ -718,15 +718,12 @@ export async function providerUpgrade(argv: any) {
       constructsOptions,
       constraints,
       cleanDirectory: false,
-      // Host-stripped on purpose: a source that names a registry pins the CLI to
-      // it, so passing the normalized FQPN here made OpenTofu fetch the provider
-      // from registry.terraform.io. Bare, the CLI uses its own registry.
       constraintsToGenerate: constraintsToUpdate.map(
         (c) =>
           new TerraformProviderConstraint(
             c.version
-              ? `${c.namespace}/${c.name}@${c.version}`
-              : `${c.namespace}/${c.name}`,
+              ? `${c.requiredProvidersSource}@${c.version}`
+              : c.requiredProvidersSource,
           ),
       ),
     });
