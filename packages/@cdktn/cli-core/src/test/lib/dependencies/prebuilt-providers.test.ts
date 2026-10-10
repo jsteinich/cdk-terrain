@@ -231,6 +231,20 @@ describe("prebuilt-providers", () => {
       ).resolves.toBe("@cdktn/provider-random");
     });
 
+    it("does not match a private registry provider to a public prebuilt", async () => {
+      mockProvidersMap();
+
+      await expect(
+        getNpmPackageName(
+          new ProviderConstraint(
+            "registry.example.com/hashicorp/random",
+            "=3.9.0",
+          ),
+          true,
+        ),
+      ).resolves.toBeUndefined();
+    });
+
     it("still reports no package for a provider that has none", async () => {
       mockProvidersMap();
 
