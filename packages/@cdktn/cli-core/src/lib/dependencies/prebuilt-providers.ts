@@ -87,13 +87,18 @@ export async function getNpmPackageName(
   constraint: ProviderConstraint,
   useCdktn: boolean,
 ): Promise<string | undefined> {
+  // Prebuilt packages are built from public registry providers; a private host
+  // names a different provider even when namespace and name collide.
+  if (!constraint.isFromPublicRegistry()) {
+    return undefined;
+  }
+
   const providers = await getAllPrebuiltProviders();
 
+  // The prebuilt list is published against the Terraform registry while
+  // `constraint` resolves against whatever the project targets, so match on the
+  // provider across the public registries.
   const entry = Object.entries(providers).find(([, p]) => {
-    // The prebuilt list is published against the Terraform registry while
-    // `constraint` resolves against whatever the project targets, so comparing
-    // full sources never matched for an OpenTofu-only project. A prebuilt
-    // package identifies a provider, not a registry.
     const prebuilt = ProviderConstraint.fromConfigEntry(p);
     return (
       prebuilt.namespace.toLowerCase() === constraint.namespace.toLowerCase() &&
