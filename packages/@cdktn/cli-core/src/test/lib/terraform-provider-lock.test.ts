@@ -6,7 +6,10 @@
 import {
   TerraformProviderLock,
   lockAddressesFor,
+  needsLockfileUpdate,
+  needsUpgrade,
 } from "../../lib/terraform-provider-lock";
+import { OPENTOFU_REGISTRY, TERRAFORM_REGISTRY } from "@cdktn/commons";
 import { readFile, stat } from "fs/promises";
 import * as path from "path";
 import { ProviderConstraint } from "../../lib/dependencies/dependency-manager";
@@ -207,65 +210,125 @@ describe("TerraformProviderLock", () => {
   });
 });
 
-describe("lockAddressesFor", () => {
-  const lockedUnder = (name: string) =>
-    (readFile as jest.Mock).mockResolvedValueOnce(
-      generateProviderLockFileContents([
-        { name, version: "1.2.3", constraints: "1.2" },
-      ]),
-    );
+describe("lock decisions for the running CLI", () => {
+  const terraformEntry = "registry.terraform.io/hashicorp/test";
+  const opentofuEntry = "registry.opentofu.org/hashicorp/test";
 
-  /** Whether any address the CLI could have locked `source` under is in the lock. */
-  const isLocked = async (source: string) => {
-    const lock = new TerraformProviderLock("test");
-    for (const address of lockAddressesFor(source, "1.2")) {
-      if (await lock.hasMatchingProvider(address)) return true;
-    }
-    return false;
+  const lockWith = (
+    entries: { name: string; version: string; constraints: string }[],
+  ) => {
+    (readFile as jest.Mock).mockResolvedValue(
+      generateProviderLockFileContents(entries),
+    );
+    return new TerraformProviderLock("test");
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("keeps a source that names a host to exactly that host", () => {
-    expect(
-      lockAddressesFor("registry.terraform.io/hashicorp/test").map(
-        (a) => a.source,
-      ),
-    ).toEqual(["registry.terraform.io/hashicorp/test"]);
+  describe("lockAddressesFor", () => {
+    it("keeps a source that names a host to exactly that host", () => {
+      expect(
+        lockAddressesFor(terraformEntry, "1.2", OPENTOFU_REGISTRY).map(
+          (a) => a.source,
+        ),
+      ).toEqual([terraformEntry]);
+    });
+
+    it("resolves a bare source against the running CLI's registry", () => {
+      expect(
+        lockAddressesFor("hashicorp/test", "1.2", OPENTOFU_REGISTRY).map(
+          (a) => a.source,
+        ),
+      ).toEqual([opentofuEntry]);
+      expect(
+        lockAddressesFor("hashicorp/test", "1.2", TERRAFORM_REGISTRY).map(
+          (a) => a.source,
+        ),
+      ).toEqual([terraformEntry]);
+    });
+
+    it("offers every public registry when the CLI is unknown", () => {
+      expect(
+        lockAddressesFor("hashicorp/test", "1.2", undefined).map(
+          (a) => a.source,
+        ),
+      ).toEqual([terraformEntry, opentofuEntry]);
+    });
   });
 
-  it("offers every public registry for a bare source", () => {
-    expect(lockAddressesFor("hashicorp/test").map((a) => a.source)).toEqual([
-      "registry.terraform.io/hashicorp/test",
-      "registry.opentofu.org/hashicorp/test",
-    ]);
+  describe("needsLockfileUpdate", () => {
+    const required = [{ source: "hashicorp/test", version: "1.2" }];
+
+    it("is satisfied by the running CLI's own entry", async () => {
+      const lock = lockWith([
+        { name: opentofuEntry, version: "1.2.3", constraints: "1.2" },
+      ]);
+      await expect(
+        needsLockfileUpdate(required, lock, OPENTOFU_REGISTRY),
+      ).resolves.toBe(false);
+    });
+
+    // A project deployed with Terraform and now run with OpenTofu: skipping init
+    // here would leave OpenTofu to fail on the lock file.
+    it("refreshes when only another CLI's entry exists", async () => {
+      const lock = lockWith([
+        { name: terraformEntry, version: "1.2.3", constraints: "1.2" },
+      ]);
+      await expect(
+        needsLockfileUpdate(required, lock, OPENTOFU_REGISTRY),
+      ).resolves.toBe(true);
+    });
+
+    it("refreshes when the CLI is unknown and not every registry is locked", async () => {
+      const lock = lockWith([
+        { name: opentofuEntry, version: "1.2.3", constraints: "1.2" },
+      ]);
+      await expect(
+        needsLockfileUpdate(required, lock, undefined),
+      ).resolves.toBe(true);
+    });
+
+    it("does not let a different public registry satisfy an explicit host", async () => {
+      const lock = lockWith([
+        { name: opentofuEntry, version: "1.2.3", constraints: "1.2" },
+      ]);
+      await expect(
+        needsLockfileUpdate(
+          [{ source: terraformEntry, version: "1.2" }],
+          lock,
+          OPENTOFU_REGISTRY,
+        ),
+      ).resolves.toBe(true);
+    });
   });
 
-  it("finds a bare source that Terraform locked", async () => {
-    lockedUnder("registry.terraform.io/hashicorp/test");
-    await expect(isLocked("hashicorp/test")).resolves.toBe(true);
-  });
+  describe("needsUpgrade with both public registries locked", () => {
+    // The OpenTofu entry satisfies the requirement; the stale Terraform one does not.
+    const lock = () =>
+      lockWith([
+        { name: terraformEntry, version: "1.0.0", constraints: "1.0.0" },
+        { name: opentofuEntry, version: "1.2.3", constraints: "1.2" },
+      ]);
+    const required = [{ source: "hashicorp/test", version: "1.2" }];
 
-  it("finds a bare source that OpenTofu locked", async () => {
-    lockedUnder("registry.opentofu.org/hashicorp/test");
-    await expect(isLocked("hashicorp/test")).resolves.toBe(true);
-  });
+    it("ignores the other CLI's conflicting entry", async () => {
+      await expect(
+        needsUpgrade(required, lock(), OPENTOFU_REGISTRY),
+      ).resolves.toBe(false);
+    });
 
-  // Matching on provider alone would report this as locked, skip init, and
-  // leave the CLI to fail on an address that is not in the lock file.
-  it("does not let a different public registry satisfy an explicit host", async () => {
-    lockedUnder("registry.opentofu.org/hashicorp/test");
-    await expect(
-      isLocked("registry.terraform.io/hashicorp/test"),
-    ).resolves.toBe(false);
-  });
+    it("upgrades when the running CLI's own entry conflicts", async () => {
+      await expect(
+        needsUpgrade(required, lock(), TERRAFORM_REGISTRY),
+      ).resolves.toBe(true);
+    });
 
-  it("does not let a public registry satisfy a private host", async () => {
-    lockedUnder("registry.terraform.io/hashicorp/test");
-    await expect(
-      isLocked("my.registry.example.com/hashicorp/test"),
-    ).resolves.toBe(false);
+    it("upgrades conservatively when the CLI is unknown", async () => {
+      await expect(needsUpgrade(required, lock(), undefined)).resolves.toBe(
+        true,
+      );
+    });
   });
 });
