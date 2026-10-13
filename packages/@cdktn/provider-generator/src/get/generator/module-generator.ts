@@ -84,10 +84,11 @@ export class ModuleGenerator {
     // Keyed off the project's declared targets rather than a fixed registry, so
     // the link matches the product the project builds for.
     const registry = registryForTargetVersions(this.targetVersions);
-    // A `//` in the source points at a submodule, e.g.
-    // terraform-aws-modules/vpc/aws//modules/vpc-endpoints
+    // Registries only have pages for a direct child of `modules/`, e.g.
+    // terraform-aws-modules/vpc/aws//modules/vpc-endpoints; any other `//` path
+    // links to the module itself.
     const [moduleSource, subPath] = target.source.split("//", 2);
-    const submodule = subPath?.replace(/^modules\//, "");
+    const submodule = subPath?.match(/^modules\/([^/]+)$/)?.[1];
     const docsUrl = registry.moduleDocsUrl(
       moduleSource,
       target.version,

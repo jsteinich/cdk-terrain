@@ -101,6 +101,15 @@ describe("moduleDocsUrl", () => {
     );
   });
 
+  // Rendered and checked: /latest/submodule/vpc-endpoints serves the submodule page.
+  it("builds a versionless OpenTofu submodule path", () => {
+    expect(
+      OPENTOFU_REGISTRY.moduleDocsUrl(source, undefined, "vpc-endpoints"),
+    ).toBe(
+      "https://search.opentofu.org/module/terraform-aws-modules/vpc/aws/latest/submodule/vpc-endpoints",
+    );
+  });
+
   it("does not v-prefix the OpenTofu latest alias", () => {
     expect(OPENTOFU_REGISTRY.moduleDocsUrl(source)).toBe(
       "https://search.opentofu.org/module/terraform-aws-modules/vpc/aws/latest",
