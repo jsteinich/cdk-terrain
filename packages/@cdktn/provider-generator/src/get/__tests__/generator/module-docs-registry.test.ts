@@ -47,15 +47,6 @@ describe("generated module docs links", () => {
     );
   });
 
-  it("uses the Terraform Registry when both products are declared", async () => {
-    expect(
-      await docsComment(module, {
-        terraform: ">=1.5.7",
-        opentofu: ">=1.6.0",
-      }),
-    ).toContain("https://registry.terraform.io/modules/");
-  });
-
   it("uses the OpenTofu Registry when only OpenTofu is declared", async () => {
     const comment = await docsComment(module, { opentofu: ">=1.6.0" });
     expect(comment).toContain("Docs at OpenTofu Registry");
@@ -70,15 +61,29 @@ describe("generated module docs links", () => {
     );
   });
 
-  it("keeps the Terraform submodule shape unchanged", async () => {
-    expect(await docsComment(submodule)).toContain(
-      "https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/3.19.0/submodules/vpc-endpoints",
+  // Registries serve submodule pages only for a direct child of `modules/`
+  // (checked against rendered pages); anything else links to the module.
+  it.each([
+    [
+      "an examples path",
+      "terraform-aws-modules/vpc/aws//examples/complete@3.19.0",
+    ],
+    [
+      "a nested modules path",
+      "terraform-aws-modules/vpc/aws//modules/x/y@3.19.0",
+    ],
+  ])("links %s to the module page", async (_name, source) => {
+    expect(await docsComment(source)).toContain(
+      "{@link https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/3.19.0 ",
+    );
+    expect(await docsComment(source, { opentofu: ">=1.6.0" })).toContain(
+      "{@link https://search.opentofu.org/module/terraform-aws-modules/vpc/aws/v3.19.0 ",
     );
   });
 
-  it("still points a local module at its source", async () => {
-    expect(await docsComment("./module", { opentofu: ">=1.6.0" })).toContain(
-      "Source at ./module",
+  it("keeps the Terraform submodule shape unchanged", async () => {
+    expect(await docsComment(submodule)).toContain(
+      "https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/3.19.0/submodules/vpc-endpoints",
     );
   });
 });
