@@ -6,7 +6,7 @@
 import path from "path";
 import fs from "fs/promises";
 import { ProviderConstraint } from "./dependencies/dependency-manager";
-import { PUBLIC_REGISTRIES, Registry, logger } from "@cdktn/commons";
+import { PUBLIC_REGISTRIES, logger } from "@cdktn/commons";
 
 const TerraformLockFileName = ".terraform.lock.hcl";
 
@@ -24,43 +24,36 @@ type TerraformProviderLockFileData = {
 
 type RequiredProvider = { source: string; version?: string };
 
-/**
- * Lock-file addresses that can satisfy a `required_providers` source. A source
- * that names a host is locked under exactly that host; a bare one under the
- * registry the running CLI resolves bare sources from. If that CLI could not be
- * identified, every public registry is returned and callers stay conservative.
- */
-export function lockAddressesFor(
+// A source that names a host is locked under exactly that host. A bare one is
+// locked under whichever public registry the CLI resolved it from, so either
+// counts: OpenTofu migrates a Terraform entry itself on init.
+function lockAddressesFor(
   source: string,
-  version: string | undefined,
-  cliRegistry: Registry | undefined,
+  version?: string,
 ): ProviderConstraint[] {
   if (source.split("/").length === 3) {
     return [new ProviderConstraint(source, version)];
-  }
-  if (cliRegistry) {
-    return [new ProviderConstraint(source, version, cliRegistry)];
   }
   return PUBLIC_REGISTRIES.map(
     (registry) => new ProviderConstraint(source, version, registry),
   );
 }
 
-/**
- * Whether `init` must refresh the lock file. Every candidate address has to be
- * locked, so an unidentified CLI refreshes rather than trusting an entry another
- * CLI wrote.
- */
+/** Whether `init` should be followed by a `providers lock` refresh. */
 export async function needsLockfileUpdate(
   required: RequiredProvider[],
   lock: TerraformProviderLock,
-  cliRegistry: Registry | undefined,
 ): Promise<boolean> {
   for (const { source, version } of required) {
-    for (const address of lockAddressesFor(source, version, cliRegistry)) {
-      if (!(await lock.hasMatchingProvider(address))) {
-        return true;
+    let locked = false;
+    for (const address of lockAddressesFor(source, version)) {
+      if (await lock.hasMatchingProvider(address)) {
+        locked = true;
+        break;
       }
+    }
+    if (!locked) {
+      return true;
     }
   }
   return false;
@@ -70,7 +63,6 @@ export async function needsLockfileUpdate(
 export async function needsUpgrade(
   required: RequiredProvider[],
   lock: TerraformProviderLock,
-  cliRegistry: Registry | undefined,
 ): Promise<boolean> {
   const lockedProviders = Object.values(await lock.providers());
   return lockedProviders.some((lockedProvider) => {
@@ -84,11 +76,11 @@ export async function needsUpgrade(
     }
 
     const provider = required.find(({ source, version }) =>
-      lockAddressesFor(source, version, cliRegistry).some(
+      lockAddressesFor(source, version).some(
         (address) => address.source === lockedConstraint.source,
       ),
     );
-    // Not required by this stack, or locked for another CLI: leave it alone.
+    // No longer required by this stack, so it can't block the upgrade.
     if (!provider) {
       return false;
     }

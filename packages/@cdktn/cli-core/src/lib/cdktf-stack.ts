@@ -5,11 +5,7 @@ import { Terraform } from "./models/terraform";
 import { getConstructIdsForOutputs, NestedTerraformOutputs } from "./output";
 import {
   Errors,
-  OPENTOFU_REGISTRY,
-  Registry,
-  TERRAFORM_REGISTRY,
   logger,
-  parseTerraformCliVersion,
   readConfigSync,
   terraformBinaryName,
 } from "@cdktn/commons";
@@ -290,11 +286,10 @@ export class CdktfStack {
   ) {
     const terraform = await this.terraformClient();
     await this.validateInstalledBinaryIfConfigured(terraform);
-    const cliRegistry = await this.runningCliRegistry(terraform);
     const needsLockfileUpdate = skipProviderLock
       ? false
-      : await this.checkNeedsLockfileUpdate(cliRegistry);
-    const needsUpgrade = await this.checkNeedsUpgrade(cliRegistry);
+      : await this.checkNeedsLockfileUpdate();
+    const needsUpgrade = await this.checkNeedsUpgrade();
     await terraform.init({
       needsUpgrade,
       noColor: noColor ?? false,
@@ -304,32 +299,13 @@ export class CdktfStack {
     return terraform;
   }
 
-  /**
-   * The registry the running CLI resolves bare provider sources from, or
-   * undefined when it cannot be identified.
-   */
-  private async runningCliRegistry(
-    terraform: Terraform,
-  ): Promise<Registry | undefined> {
-    try {
-      const { name } = parseTerraformCliVersion(await terraform.version());
-      if (name === "opentofu") return OPENTOFU_REGISTRY;
-      if (name === "terraform") return TERRAFORM_REGISTRY;
-    } catch (e) {
-      logger.debug(`Could not identify the Terraform-compatible CLI: ${e}`);
-    }
-    return undefined;
-  }
-
   private requiredProviders() {
     // Read required providers from the stack output
     const requiredProviders = this.parsedContent.terraform?.required_providers;
     return Object.values(requiredProviders || {});
   }
 
-  private async checkNeedsLockfileUpdate(
-    cliRegistry: Registry | undefined,
-  ): Promise<boolean> {
+  private async checkNeedsLockfileUpdate(): Promise<boolean> {
     if (this.options.migrateState) {
       // If we're migrating state, we need to init
       return true;
@@ -342,14 +318,12 @@ export class CdktfStack {
       return true;
     }
 
-    return needsLockfileUpdate(this.requiredProviders(), lock, cliRegistry);
+    return needsLockfileUpdate(this.requiredProviders(), lock);
   }
 
-  private async checkNeedsUpgrade(
-    cliRegistry: Registry | undefined,
-  ): Promise<boolean> {
+  private async checkNeedsUpgrade(): Promise<boolean> {
     const lock = new TerraformProviderLock(this.stack.workingDirectory);
-    return needsUpgrade(this.requiredProviders(), lock, cliRegistry);
+    return needsUpgrade(this.requiredProviders(), lock);
   }
 
   private async run(cb: () => Promise<void>) {
