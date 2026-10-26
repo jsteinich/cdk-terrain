@@ -3,9 +3,16 @@
 import * as semver from "semver";
 import {
   DEFAULT_TARGET_VERSIONS,
-  parseTerraformCliVersion,
+  TerraformCliProbe,
   TerraformTargetVersions,
 } from "@cdktn/commons";
+
+export interface InstalledBinaryCheck {
+  /** The binary definitely does not match the declared targets. */
+  readonly errors: string[];
+  /** The binary could not be verified; it may still match. */
+  readonly warnings: string[];
+}
 
 /**
  * Verifies that the installed Terraform-compatible binary satisfies the
@@ -17,33 +24,50 @@ import {
  * explicit step that proves the local binary actually falls inside it.
  */
 export function checkInstalledBinaryAgainstTargets(
-  versionOutput: string,
+  cli: TerraformCliProbe,
   declaredTargets: TerraformTargetVersions | undefined,
   binaryName: string,
-): string[] {
+): InstalledBinaryCheck {
   const targets = declaredTargets ?? DEFAULT_TARGET_VERSIONS;
-  const cli = parseTerraformCliVersion(versionOutput);
+
+  if (cli.name === "missing") {
+    return {
+      errors: [
+        `The binary "${binaryName}" could not be found, so it could not be verified against the declared targetVersions`,
+      ],
+      warnings: [],
+    };
+  }
 
   if (cli.name === "unknown" || !cli.version) {
-    return [
-      `Could not determine whether ${binaryName} is Terraform or OpenTofu from its version output, unable to verify it against the declared targetVersions`,
-    ];
+    return {
+      errors: [],
+      warnings: [
+        `Could not determine whether ${binaryName} is Terraform or OpenTofu from its version output, so it was not verified against the declared targetVersions`,
+      ],
+    };
   }
 
   const declaredRange = targets[cli.name];
   if (!declaredRange) {
-    return [
-      `The installed binary "${binaryName}" is ${cli.name} ${cli.version}, but the project's targetVersions does not declare ${cli.name} (declared: ${JSON.stringify(
-        targets,
-      )})`,
-    ];
+    return {
+      errors: [
+        `The installed binary "${binaryName}" is ${cli.name} ${cli.version}, but the project's targetVersions does not declare ${cli.name} (declared: ${JSON.stringify(
+          targets,
+        )})`,
+      ],
+      warnings: [],
+    };
   }
 
   if (!semver.satisfies(cli.version, declaredRange)) {
-    return [
-      `The installed binary "${binaryName}" is ${cli.name} ${cli.version}, which is outside the project's declared targetVersions.${cli.name} range "${declaredRange}"`,
-    ];
+    return {
+      errors: [
+        `The installed binary "${binaryName}" is ${cli.name} ${cli.version}, which is outside the project's declared targetVersions.${cli.name} range "${declaredRange}"`,
+      ],
+      warnings: [],
+    };
   }
 
-  return [];
+  return { errors: [], warnings: [] };
 }

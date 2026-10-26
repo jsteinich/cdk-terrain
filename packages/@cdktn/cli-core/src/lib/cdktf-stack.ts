@@ -8,8 +8,18 @@ import {
   logger,
   readConfigSync,
   terraformBinaryName,
+  terraformCli,
 } from "@cdktn/commons";
 import { checkInstalledBinaryAgainstTargets } from "./installed-binary-check";
+
+// Every stack runs the same check in one command; say each warning once.
+const warned = new Set<string>();
+function warnOnce(message: string) {
+  if (!warned.has(message)) {
+    warned.add(message);
+    logger.warn(message);
+  }
+}
 import { extractJsonLogIfPresent } from "./server/terraform-logs";
 import {
   TerraformCli,
@@ -263,19 +273,23 @@ export class CdktfStack {
    * cdktf.json, verifies the installed Terraform-compatible binary against
    * the project's declared `targetVersions` before executing it.
    */
-  private async validateInstalledBinaryIfConfigured(terraform: Terraform) {
+  private async validateInstalledBinaryIfConfigured() {
     const config = readConfigSync();
     if (!config.validateInstalledBinary) {
       return;
     }
 
-    const problems = checkInstalledBinaryAgainstTargets(
-      await terraform.version(),
+    // The probe is cached per process and stays out of the stack logs.
+    const { errors, warnings } = checkInstalledBinaryAgainstTargets(
+      await terraformCli(),
       config.targetVersions,
       terraformBinaryName,
     );
-    if (problems.length > 0) {
-      throw Errors.Usage(problems.join("\n"));
+    for (const warning of warnings) {
+      warnOnce(warning);
+    }
+    if (errors.length > 0) {
+      throw Errors.Usage(errors.join("\n"));
     }
   }
 
@@ -285,7 +299,7 @@ export class CdktfStack {
     migrateState?: boolean,
   ) {
     const terraform = await this.terraformClient();
-    await this.validateInstalledBinaryIfConfigured(terraform);
+    await this.validateInstalledBinaryIfConfigured();
     const needsLockfileUpdate = skipProviderLock
       ? false
       : await this.checkNeedsLockfileUpdate();
