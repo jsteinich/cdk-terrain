@@ -1,6 +1,16 @@
 // Copyright (c) HashiCorp, Inc
 // SPDX-License-Identifier: MPL-2.0
+import * as semver from "semver";
 import { TerraformTargetVersions } from "./config";
+
+/**
+ * The version a module docs link can name: an exact version, with a leading `=`
+ * allowed. A range such as `~> 19.0` names no single page, so it gets none.
+ */
+function exactModuleVersion(version?: string): string | undefined {
+  const pinned = version?.trim().replace(/^=\s*/, "");
+  return pinned && semver.valid(pinned) === pinned ? pinned : undefined;
+}
 
 /** A provider registry and the URL shapes that go with it. */
 export interface Registry {
@@ -25,7 +35,7 @@ export interface Registry {
   /**
    * Documentation link for one generated module. `source` is
    * `namespace/name/target`; `submodule` is the path a `//` in the source
-   * pointed at. Omitting `version` links to the latest.
+   * pointed at. A missing version, or one that is not exact, links to the latest.
    */
   moduleDocsUrl(source: string, version?: string, submodule?: string): string;
 }
@@ -48,7 +58,7 @@ export const TERRAFORM_REGISTRY: Registry = {
     }
   },
   moduleDocsUrl(source, version, submodule) {
-    const base = `https://registry.terraform.io/modules/${source}/${version || "latest"}`;
+    const base = `https://registry.terraform.io/modules/${source}/${exactModuleVersion(version) ?? "latest"}`;
     return submodule ? `${base}/submodules/${submodule}` : base;
   },
 };
@@ -77,7 +87,8 @@ export const OPENTOFU_REGISTRY: Registry = {
   // v-prefixed version, and "submodule" unhyphenated and singular. Without the
   // v the page silently renders a version list instead of the module.
   moduleDocsUrl(source, version, submodule) {
-    const base = `https://search.opentofu.org/module/${source}/${version ? `v${version}` : "latest"}`;
+    const exact = exactModuleVersion(version);
+    const base = `https://search.opentofu.org/module/${source}/${exact ? `v${exact}` : "latest"}`;
     return submodule ? `${base}/submodule/${submodule}` : base;
   },
 };
