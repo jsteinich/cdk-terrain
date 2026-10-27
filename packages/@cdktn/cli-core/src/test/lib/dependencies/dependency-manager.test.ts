@@ -1,6 +1,13 @@
 // Copyright (c) HashiCorp, Inc
 // SPDX-License-Identifier: MPL-2.0
-import { Language, OPENTOFU_REGISTRY } from "@cdktn/commons";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
+import {
+  Language,
+  OPENTOFU_REGISTRY,
+  TerraformProviderConstraint,
+} from "@cdktn/commons";
 import {
   ProviderConstraint,
   DependencyManager,
@@ -8,42 +15,6 @@ import {
 
 describe("dependency manager", () => {
   describe("ProviderConstraint", () => {
-    describe("requiredProvidersSource", () => {
-      it("drops a host that normalization added", () => {
-        expect(
-          new ProviderConstraint("random", "=3.6.1", OPENTOFU_REGISTRY)
-            .requiredProvidersSource,
-        ).toBe("hashicorp/random");
-        expect(
-          new ProviderConstraint(
-            "hashicorp/random",
-            "=3.6.1",
-            OPENTOFU_REGISTRY,
-          ).requiredProvidersSource,
-        ).toBe("hashicorp/random");
-      });
-
-      it("keeps a public host the user wrote", () => {
-        expect(
-          new ProviderConstraint(
-            "registry.terraform.io/hashicorp/random",
-            "=3.6.1",
-            OPENTOFU_REGISTRY,
-          ).requiredProvidersSource,
-        ).toBe("registry.terraform.io/hashicorp/random");
-      });
-
-      it("keeps a private host", () => {
-        expect(
-          new ProviderConstraint(
-            "registry.example.com/acme/thing",
-            "1.0.0",
-            OPENTOFU_REGISTRY,
-          ).requiredProvidersSource,
-        ).toBe("registry.example.com/acme/thing");
-      });
-    });
-
     it.each(["aws", "hashicorp/aws", "registry.terraform.io/hashicorp/aws"])(
       "should parse a simple constraint from '%s'",
       (configEntry) => {
@@ -112,6 +83,64 @@ describe("dependency manager", () => {
       expect(constraint.toString()).toEqual(
         "registry.terraform.io/hashicorp/random@*",
       );
+    });
+  });
+
+  // `provider upgrade` generates bindings from the returned entry, and the
+  // binding's terraformProviderSource is that constraint's source.
+  describe("upgradeProvider of a local provider", () => {
+    let projectDir: string;
+    let originalCwd: string;
+
+    beforeEach(() => {
+      originalCwd = process.cwd();
+      projectDir = fs.mkdtempSync(path.join(os.tmpdir(), "dep-mgr-upgrade-"));
+      process.chdir(projectDir);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+      process.chdir(originalCwd);
+      fs.rmSync(projectDir, { recursive: true, force: true });
+    });
+
+    it.each([
+      ["a string entry", "registry.opentofu.org/hashicorp/random@=3.6.0"],
+      [
+        "an object entry",
+        {
+          name: "random",
+          source: "registry.opentofu.org/hashicorp/random",
+          version: "=3.6.0",
+        },
+      ],
+    ])("keeps the host of %s on a shorthand upgrade", async (_name, entry) => {
+      fs.writeFileSync(
+        path.join(projectDir, "cdktf.json"),
+        JSON.stringify({
+          language: "typescript",
+          app: "npx tsx main.ts",
+          terraformProviders: [entry],
+          targetVersions: { opentofu: ">=1.6.0" },
+        }),
+      );
+      const mgr = new DependencyManager(
+        Language.TYPESCRIPT,
+        "0.0.0",
+        projectDir,
+      );
+      jest
+        .spyOn(mgr, "getCurrentlyInstalledVersion")
+        .mockResolvedValue(undefined);
+
+      const upgraded = await mgr.upgradeProvider(
+        new ProviderConstraint("random", "=3.6.1", OPENTOFU_REGISTRY),
+      );
+
+      if (!upgraded.addedLocalProvider) throw new Error("expected local");
+      const generated = new TerraformProviderConstraint(upgraded.updatedEntry);
+      expect(generated.source).toBe("registry.opentofu.org/hashicorp/random");
+      expect(generated.version).toBe("=3.6.1");
     });
   });
 
