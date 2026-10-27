@@ -1,6 +1,10 @@
 // Copyright (c) HashiCorp, Inc
 // SPDX-License-Identifier: MPL-2.0
-import { Registry, registryForTargetVersions } from "@cdktn/commons";
+import {
+  Registry,
+  TerraformDependencyConstraint,
+  registryForTargetVersions,
+} from "@cdktn/commons";
 import { CdktfConfig } from "../cdktf-config";
 import { ProviderConstraint } from "./dependency-manager";
 
@@ -35,17 +39,24 @@ export class CdktfConfigManager {
 
   private async setProvider(constraint: ProviderConstraint): Promise<void> {
     const registry = this.registry;
+    const isSame = (provider: string | TerraformDependencyConstraint) =>
+      ProviderConstraint.fromConfigEntry(provider, registry).source ===
+      constraint.source;
+
+    // An update keeps the entry's own spelling, so a host the user wrote stays.
+    const existing = this.config.terraformProviders.find(isSame);
+    const source =
+      typeof existing === "string"
+        ? existing.split("@")[0].trim()
+        : simplifySource(constraint.source, registry);
 
     // excluding the constraint to be added (if it already existed)
     const currentProviders = this.config.terraformProviders.filter(
-      (provider) =>
-        ProviderConstraint.fromConfigEntry(provider, registry).source !==
-        constraint.source,
+      (provider) => !isSame(provider),
     );
 
     const provider =
-      simplifySource(constraint.source, registry) +
-      (constraint.version ? `@${constraint.version}` : "");
+      source + (constraint.version ? `@${constraint.version}` : "");
 
     currentProviders.push(provider);
     this.config.writeTerraformProviders(currentProviders);

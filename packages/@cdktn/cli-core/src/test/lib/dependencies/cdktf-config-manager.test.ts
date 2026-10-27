@@ -68,6 +68,27 @@ describe("CdktfConfigManager", () => {
       expect(readProviders()).toEqual(["hashicorp/random@=3.2.0"]);
     });
 
+    it.each([
+      ["a shorthand", "random"],
+      ["a qualified", "registry.opentofu.org/hashicorp/random"],
+    ])(
+      "keeps the host of an explicitly qualified entry on %s upgrade",
+      async (_name, upgradeSource) => {
+        writeConfig(
+          ["registry.opentofu.org/hashicorp/random@=3.6.0"],
+          opentofu,
+        );
+
+        await new CdktfConfigManager().updateProvider(
+          new ProviderConstraint(upgradeSource, "=3.6.1", OPENTOFU_REGISTRY),
+        );
+
+        expect(readProviders()).toEqual([
+          "registry.opentofu.org/hashicorp/random@=3.6.1",
+        ]);
+      },
+    );
+
     it("recognises an unqualified entry as the same provider", async () => {
       writeConfig(["hashicorp/random@=3.1.3"], opentofu);
 
