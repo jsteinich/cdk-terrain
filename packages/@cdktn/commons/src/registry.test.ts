@@ -120,7 +120,7 @@ describe("moduleDocsUrl", () => {
 describe("moduleDocsUrl with a version that is not exact", () => {
   const source = "terraform-aws-modules/eks/aws";
 
-  it.each(["~> 19.0", ">= 19.0, < 20.0", "19.0", "19"])(
+  it.each(["~> 19.0", ">= 19.0, < 20.0", "> 19"])(
     "links %s to the latest page",
     (version) => {
       expect(TERRAFORM_REGISTRY.moduleDocsUrl(source, version)).toBe(
@@ -136,6 +136,9 @@ describe("moduleDocsUrl with a version that is not exact", () => {
     ["=19.21.0", "19.21.0"],
     ["= 19.21.0", "19.21.0"],
     ["19.21.0-beta.1", "19.21.0-beta.1"],
+    // Terraform pads a partial version: "19.0" allows only 19.0.0.
+    ["19.0", "19.0.0"],
+    ["=19", "19.0.0"],
   ])("keeps the exact version in %s", (version, expected) => {
     expect(TERRAFORM_REGISTRY.moduleDocsUrl(source, version)).toBe(
       `https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/${expected}`,

@@ -5,11 +5,15 @@ import { TerraformTargetVersions } from "./config";
 
 /**
  * The version a module docs link can name: an exact version, with a leading `=`
- * allowed. A range such as `~> 19.0` names no single page, so it gets none.
+ * allowed. Terraform pads a partial one with zeros, so `19.0` is 19.0.0. A
+ * range such as `~> 19.0` names no single page, so it gets none.
  */
 function exactModuleVersion(version?: string): string | undefined {
   const pinned = version?.trim().replace(/^=\s*/, "");
-  return pinned && semver.valid(pinned) === pinned ? pinned : undefined;
+  const padded = pinned?.match(/^\d+(\.\d+)?$/)
+    ? pinned + ".0".repeat(3 - pinned.split(".").length)
+    : pinned;
+  return padded && semver.valid(padded) === padded ? padded : undefined;
 }
 
 /** A provider registry and the URL shapes that go with it. */
