@@ -3,18 +3,20 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import {
-  TerraformCliProbe,
-  logger,
-  seedTerraformCliProbeForTests,
-} from "@cdktn/commons";
+import { TerraformCliProbe, identifyTerraformCli } from "@cdktn/commons";
+import { CdktfProject } from "../../lib/cdktf-project";
 import { CdktfStack } from "../../lib/cdktf-stack";
 import { checkInstalledBinaryAgainstTargets } from "../../lib/installed-binary-check";
+import { SynthesizedStack } from "../../lib/synth-stack";
+
+jest.mock("@cdktn/commons", () => ({
+  ...jest.requireActual("@cdktn/commons"),
+  identifyTerraformCli: jest.fn(),
+}));
 
 describe("checkInstalledBinaryAgainstTargets", () => {
   const terraform: TerraformCliProbe = { name: "terraform", version: "1.6.5" };
   const openTofu: TerraformCliProbe = { name: "opentofu", version: "1.9.3" };
-  const passes = { errors: [], warnings: [] };
 
   it("passes when the installed binary satisfies the declared range", () => {
     expect(
@@ -23,7 +25,7 @@ describe("checkInstalledBinaryAgainstTargets", () => {
         { terraform: ">=1.5.7" },
         "terraform",
       ),
-    ).toEqual(passes);
+    ).toEqual([]);
   });
 
   it("evaluates the range of the detected product", () => {
@@ -33,7 +35,7 @@ describe("checkInstalledBinaryAgainstTargets", () => {
         { terraform: ">=1.10.0", opentofu: ">=1.6.0" },
         "tofu",
       ),
-    ).toEqual(passes);
+    ).toEqual([]);
   });
 
   it("fails when the installed binary is outside the declared range", () => {
@@ -43,12 +45,9 @@ describe("checkInstalledBinaryAgainstTargets", () => {
         { terraform: ">=1.10.0" },
         "terraform",
       ),
-    ).toEqual({
-      errors: [
-        `The installed binary "terraform" is terraform 1.6.5, which is outside the project's declared targetVersions.terraform range ">=1.10.0"`,
-      ],
-      warnings: [],
-    });
+    ).toEqual([
+      `The installed binary "terraform" is terraform 1.6.5, which is outside the project's declared targetVersions.terraform range ">=1.10.0"`,
+    ]);
   });
 
   it("fails when the project does not declare the installed product", () => {
@@ -58,86 +57,88 @@ describe("checkInstalledBinaryAgainstTargets", () => {
         { terraform: ">=1.5.7" },
         "tofu",
       ),
-    ).toEqual({
-      errors: [
-        `The installed binary "tofu" is opentofu 1.9.3, but the project's targetVersions does not declare opentofu (declared: {"terraform":">=1.5.7"})`,
-      ],
-      warnings: [],
-    });
+    ).toEqual([
+      `The installed binary "tofu" is opentofu 1.9.3, but the project's targetVersions does not declare opentofu (declared: {"terraform":">=1.5.7"})`,
+    ]);
   });
 
   it("falls back to the dual product baseline when nothing is declared", () => {
     expect(
       checkInstalledBinaryAgainstTargets(terraform, undefined, "terraform"),
-    ).toEqual(passes);
+    ).toEqual([]);
     expect(
       checkInstalledBinaryAgainstTargets(openTofu, undefined, "tofu"),
-    ).toEqual(passes);
+    ).toEqual([]);
   });
 
-  it("fails when the binary cannot be found", () => {
+  // The check is opt-in and strict: a binary it cannot verify must not pass.
+  it.each([
+    [
+      "cannot be found",
+      { name: "missing" } as const,
+      `The binary "terraform" could not be found, so it could not be verified against the declared targetVersions`,
+    ],
+    [
+      "cannot be identified",
+      { name: "unknown" } as const,
+      `Could not determine whether terraform is Terraform or OpenTofu from its version output, so it could not be verified against the declared targetVersions`,
+    ],
+  ])("fails when the binary %s", (_name, cli, message) => {
     expect(
       checkInstalledBinaryAgainstTargets(
-        { name: "missing" },
+        cli,
         { terraform: ">=1.5.7" },
         "terraform",
       ),
-    ).toEqual({
-      errors: [
-        `The binary "terraform" could not be found, so it could not be verified against the declared targetVersions`,
-      ],
-      warnings: [],
-    });
-  });
-
-  // The probe reports `unknown` for unrecognised output, a failed run or a
-  // timeout; none of those shows a mismatch, so they warn instead of failing.
-  it("warns rather than fails when the binary cannot be identified", () => {
-    expect(
-      checkInstalledBinaryAgainstTargets(
-        { name: "unknown" },
-        { terraform: ">=1.5.7" },
-        "terraform",
-      ),
-    ).toEqual({
-      errors: [],
-      warnings: [
-        `Could not determine whether terraform is Terraform or OpenTofu from its version output, so it was not verified against the declared targetVersions`,
-      ],
-    });
+    ).toEqual([message]);
   });
 });
 
-// The opt-in check runs on every stack's init; it reads the cached probe so it
-// adds no `version` spawn or output per stack.
-describe("CdktfStack with validateInstalledBinary", () => {
-  let projectDir: string;
-  let originalCwd: string;
-  let terraform: { init: jest.Mock; version: jest.Mock };
+function synthesized(name: string): SynthesizedStack {
+  return {
+    name,
+    dependencies: [],
+    annotations: [],
+    content: JSON.stringify({ "//": { metadata: {}, outputs: {} } }),
+    constructPath: ".",
+    synthesizedStackPath: ".",
+    workingDirectory: ".",
+    stackMetadataPath: ".",
+  };
+}
 
-  const stackNamed = (name: string) =>
-    new CdktfStack({
-      stack: {
-        name,
-        dependencies: [],
-        annotations: [],
-        content: JSON.stringify({
-          "//": {
-            metadata: { version: "0.0.0", stackName: name, backend: "local" },
-            outputs: {},
-          },
-        }),
-        constructPath: ".",
-        synthesizedStackPath: ".",
-        workingDirectory: projectDir,
-        stackMetadataPath: ".",
-      },
+// The check runs once per command, before any stack initializes, so a
+// mismatch never stops a multi-stack run partway.
+describe("CdktfProject with validateInstalledBinary", () => {
+  const identify = identifyTerraformCli as jest.Mock;
+  const originalCwd = process.cwd();
+  let projectDir: string;
+  let initialize: jest.SpyInstance;
+
+  function project() {
+    const p = new CdktfProject({
+      synthCommand: "unused",
+      outDir: "unused",
       onUpdate: () => {},
-      abortSignal: new AbortController().signal,
     });
+    jest
+      .spyOn(p as any, "readSynthesizedStacks")
+      .mockResolvedValue([synthesized("a"), synthesized("b")]);
+    return p;
+  }
+
+  const run = (p: CdktfProject, method: string) =>
+    method === "diff"
+      ? p.diff({ skipSynth: true, stackName: "a" })
+      : method === "fetchOutputs"
+        ? p.fetchOutputs({ skipSynth: true, stackNames: ["a", "b"] })
+        : (p as any)[method]({
+            skipSynth: true,
+            autoApprove: true,
+            stackNames: ["a", "b"],
+          });
 
   beforeEach(() => {
-    originalCwd = process.cwd();
     projectDir = fs.mkdtempSync(path.join(os.tmpdir(), "binary-check-"));
     fs.writeFileSync(
       path.join(projectDir, "cdktf.json"),
@@ -149,38 +150,43 @@ describe("CdktfStack with validateInstalledBinary", () => {
       }),
     );
     process.chdir(projectDir);
-    terraform = { init: jest.fn(), version: jest.fn() };
+    initialize = jest
+      .spyOn(CdktfStack.prototype, "initalizeTerraform")
+      .mockResolvedValue(undefined as any);
     jest
       .spyOn(CdktfStack.prototype as any, "terraformClient")
-      .mockResolvedValue(terraform);
+      .mockResolvedValue({
+        deploy: async () => ({ cancelled: false }),
+        destroy: async () => ({ cancelled: false }),
+        output: async () => ({}),
+      });
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
-    seedTerraformCliProbeForTests();
+    identify.mockReset();
     process.chdir(originalCwd);
     fs.rmSync(projectDir, { recursive: true, force: true });
   });
 
-  it("fails on a mismatch from the cached probe, without a per-stack version call", async () => {
-    seedTerraformCliProbeForTests(Promise.resolve("Terraform v1.6.5\n"));
+  it.each(["diff", "deploy", "destroy", "fetchOutputs"])(
+    "%s fails before any stack initializes",
+    async (method) => {
+      identify.mockResolvedValue({ name: "terraform", version: "1.6.5" });
 
-    await expect(stackNamed("a").initalizeTerraform()).rejects.toThrow(
-      /outside the project's declared targetVersions\.terraform range/,
-    );
-    expect(terraform.version).not.toHaveBeenCalled();
-    expect(terraform.init).not.toHaveBeenCalled();
-  });
+      await expect(run(project(), method)).rejects.toThrow(
+        `The installed binary "terraform" is terraform 1.6.5, which is outside the project's declared targetVersions.terraform range ">=1.10.0"`,
+      );
+      expect(initialize).not.toHaveBeenCalled();
+    },
+  );
 
-  it("warns once per process when the binary cannot be identified", async () => {
-    seedTerraformCliProbeForTests(Promise.resolve("not a version banner"));
-    const warn = jest.spyOn(logger, "warn").mockImplementation(() => {});
+  it("runs `version` once for a command over several stacks", async () => {
+    identify.mockResolvedValue({ name: "terraform", version: "1.10.2" });
 
-    await stackNamed("a").initalizeTerraform();
-    await stackNamed("b").initalizeTerraform();
+    await run(project(), "deploy");
 
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(terraform.init).toHaveBeenCalledTimes(2);
-    expect(terraform.version).not.toHaveBeenCalled();
+    expect(identify).toHaveBeenCalledTimes(1);
+    expect(initialize).toHaveBeenCalledTimes(2);
   });
 });
