@@ -103,15 +103,17 @@ export async function mkdtemp(closure: (dir: string) => Promise<void>) {
   }
 }
 
-// On Windows a shell's `exec` starts a separate process, so only `taskkill /t`
-// reaches it; elsewhere the command usually is the direct child.
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+
+// Kills a timed child and everything it started: `taskkill /t` on Windows, and
+// elsewhere the process group the child leads (timed children are detached).
 function killProcessTree(child: ChildProcess) {
   if (!child.pid) return;
   try {
     if (process.platform === "win32") {
       spawnSync("taskkill", ["/pid", String(child.pid), "/t", "/f"]);
     } else {
-      child.kill("SIGKILL");
+      process.kill(-child.pid, "SIGKILL");
     }
   } catch {
     // Already exited between the timeout firing and the kill.
@@ -163,14 +165,23 @@ export const exec = async (
 
   const logStderr = logStderrAsDebug ? processLoggerDebug : processLoggerError;
 
+  // setTimeout fires at once for anything above its maximum, Infinity included.
+  const timeoutMs = timeout ? Math.min(timeout, MAX_TIMEOUT_MS) : undefined;
+
   return new Promise((ok, ko) => {
-    const child = spawn(command, args, spawnOptions);
+    // A timed child leads its own process group on POSIX so a timeout can kill
+    // what it forked. It then misses the terminal's interrupt, which only the
+    // short `version` probe sets a timeout for.
+    const child = spawn(command, args, {
+      ...spawnOptions,
+      detached: timeoutMs !== undefined && process.platform !== "win32",
+    });
     const out = new Array<string>();
     const err = new Array<string>();
 
     // Not spawn's own `timeout`: that kills only the direct child and then waits
     // for "close", which a descendant holding the pipes can delay indefinitely.
-    const timer = timeout
+    const timer = timeoutMs
       ? setTimeout(() => {
           killProcessTree(child);
           child.stdout?.destroy();
@@ -180,7 +191,7 @@ export const exec = async (
           );
           attachProcessOutput(error, err.join(""), out.join(""));
           ko(error);
-        }, timeout)
+        }, timeoutMs)
       : undefined;
     if (stdout !== undefined) {
       child.stdout?.on("data", (chunk: Buffer) => {
