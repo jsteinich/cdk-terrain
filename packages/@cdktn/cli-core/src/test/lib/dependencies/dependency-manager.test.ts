@@ -1,10 +1,17 @@
 // Copyright (c) HashiCorp, Inc
 // SPDX-License-Identifier: MPL-2.0
+import {
+  MockAgent,
+  setGlobalDispatcher,
+  getGlobalDispatcher,
+  Dispatcher,
+} from "undici";
 import { Language, OPENTOFU_REGISTRY } from "@cdktn/commons";
 import {
   ProviderConstraint,
   DependencyManager,
 } from "../../../lib/dependencies/dependency-manager";
+import { resetFetchCache } from "../../../lib/dependencies/prebuilt-providers";
 
 describe("dependency manager", () => {
   describe("ProviderConstraint", () => {
@@ -128,6 +135,96 @@ describe("dependency manager", () => {
       ).rejects.toThrowErrorMatchingInlineSnapshot(
         `"Usage Error: Could not find a version for the provider 'registry.terraform.io/hashicorp/aaawwwwwssss' in the public registry. This could be due to a typo, please take a look at https://registry.terraform.io/browse/providers to find all supported providers."`,
       );
+    });
+  });
+
+  describe("convertPackageName", () => {
+    it.each([
+      [
+        "@cdktn/provider-google-beta",
+        "github.com/cdktn-io/cdktn-provider-googlebeta",
+        "github.com/cdktn-io/cdktn-provider-googlebeta-go/googlebeta",
+      ],
+      [
+        "@cdktn/provider-google-beta",
+        "",
+        "github.com/cdktn-io/cdktn-provider-googlebeta-go/googlebeta",
+      ],
+      [
+        "@cdktf/provider-google-beta",
+        "github.com/cdktf/cdktf-provider-googlebeta",
+        "github.com/cdktf/cdktf-provider-googlebeta-go/googlebeta",
+      ],
+    ])(
+      "drops dashes from the Go package for %s (repository '%s')",
+      (npmName, repository, goName) => {
+        const mgr = new DependencyManager(Language.GO, "0.25.0", __dirname);
+        expect(
+          (mgr as any).convertPackageName(
+            npmName,
+            repository,
+            npmName.startsWith("@cdktn"),
+          ),
+        ).toBe(goName);
+      },
+    );
+  });
+
+  describe("getCurrentlyInstalledVersion", () => {
+    let originalDispatcher: Dispatcher;
+    let mockAgent: MockAgent;
+
+    beforeEach(() => {
+      originalDispatcher = getGlobalDispatcher();
+      mockAgent = new MockAgent();
+      mockAgent.disableNetConnect();
+      setGlobalDispatcher(mockAgent);
+    });
+
+    afterEach(() => {
+      resetFetchCache();
+      setGlobalDispatcher(originalDispatcher);
+    });
+
+    it("finds a provider published only under @cdktn", async () => {
+      mockAgent
+        .get("https://raw.githubusercontent.com")
+        .intercept({
+          path: /.*cdktn-repository-manager.*provider\.json/,
+          method: "GET",
+        })
+        .reply(200, { awscc: "hashicorp/awscc@~> 1.0" });
+      mockAgent
+        .get("https://registry.npmjs.org")
+        .intercept({ path: "/@cdktf/provider-awscc", method: "GET" })
+        .reply(404, "Not found");
+      mockAgent
+        .get("https://registry.npmjs.org")
+        .intercept({ path: "/@cdktn/provider-awscc", method: "GET" })
+        .reply(200, {
+          repository: {
+            type: "git",
+            url: "git+https://github.com/cdktn-io/cdktn-provider-awscc.git",
+          },
+        });
+
+      const mgr = new DependencyManager(
+        Language.TYPESCRIPT,
+        "0.12.2",
+        __dirname,
+      );
+      jest
+        .spyOn((mgr as any).packageManager, "listProviderPackages")
+        .mockResolvedValue([
+          { name: "@cdktn/provider-awscc", version: "1.2.0" },
+        ]);
+
+      await expect(
+        mgr.getCurrentlyInstalledVersion(
+          ProviderConstraint.fromConfigEntry("hashicorp/awscc"),
+        ),
+      ).resolves.toBe("1.2.0");
+      expect(mockAgent.pendingInterceptors()).toHaveLength(0);
     });
   });
 });

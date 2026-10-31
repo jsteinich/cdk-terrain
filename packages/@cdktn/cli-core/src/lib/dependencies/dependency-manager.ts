@@ -19,6 +19,7 @@ import {
   getPrebuiltProviderRepositoryName,
   getPrebuiltProviderVersionInformation,
   getPrebuiltProviderVersions,
+  PrebuiltProviderNotFoundError,
 } from "./prebuilt-providers";
 import { getLatestVersion, registryForConstraint } from "./registry-api";
 import { versionMatchesConstraint } from "./version-constraints";
@@ -302,7 +303,12 @@ export class DependencyManager {
 
     if (!npmPackageName) return;
 
-    return this.tryGetLanguagePackageName(npmPackageName);
+    try {
+      return await this.tryGetLanguagePackageName(npmPackageName);
+    } catch (e) {
+      if (e instanceof PrebuiltProviderNotFoundError) return;
+      throw e;
+    }
   }
 
   private async tryGetLanguagePackageName(
@@ -432,13 +438,14 @@ export class DependencyManager {
    */
   private convertPackageNameCdktf(name: string, repository: string): string {
     const providerName = name.replace("@cdktf/provider-", "");
+    const goName = providerName.replace(/-/g, "");
     switch (this.targetLanguage) {
       case Language.GO: // e.g. github.com/cdktf/cdktf-provider-opentelekomcloud-go/opentelekomcloud
         if (repository) {
-          return `${repository}-go/${providerName}`;
+          return `${repository}-go/${goName}`;
         }
 
-        return `github.com/cdktf/cdktf-provider-${providerName}-go/${providerName}`;
+        return `github.com/cdktf/cdktf-provider-${goName}-go/${goName}`;
       case Language.TYPESCRIPT: // e.g. @cdktf/provider-random
         return name; // already the correct name
       case Language.CSHARP: // e.g. HashiCorp.Cdktf.Providers.Opentelekomcloud
@@ -462,13 +469,14 @@ export class DependencyManager {
     repository: string,
   ): string | undefined {
     const providerName = name.replace("@cdktn/provider-", "");
+    const goName = providerName.replace(/-/g, "");
     switch (this.targetLanguage) {
       case Language.GO: // e.g. github.com/cdktf/cdktf-provider-opentelekomcloud-go/opentelekomcloud
         if (repository) {
-          return `${repository}-go/${providerName}`;
+          return `${repository}-go/${goName}`;
         }
 
-        return `github.com/cdktn-io/cdktn-provider-${providerName}-go/${providerName}`;
+        return `github.com/cdktn-io/cdktn-provider-${goName}-go/${goName}`;
       case Language.TYPESCRIPT: // e.g. @cdktf/provider-random
         return name; // already the correct name
       case Language.CSHARP: // e.g. HashiCorp.Cdktf.Providers.Opentelekomcloud

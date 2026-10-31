@@ -198,6 +198,112 @@ describe("prebuilt-providers", () => {
     });
   });
 
+  describe("getPrebuiltProviderVersions across npm scopes", () => {
+    const mockProvidersMap = () =>
+      mockAgent
+        .get("https://raw.githubusercontent.com")
+        .intercept({
+          path: /.*cdktn-repository-manager.*provider\.json/,
+          method: "GET",
+        })
+        .reply(200, {
+          awscc: "hashicorp/awscc@~> 1.0",
+          googlebeta: "hashicorp/google-beta@~> 8.0",
+        });
+    const mockNpm = (path: string, status: number, body: any) =>
+      mockAgent
+        .get("https://registry.npmjs.org")
+        .intercept({ path, method: "GET" })
+        .reply(status, body);
+
+    afterEach(() => {
+      expect(mockAgent.pendingInterceptors()).toHaveLength(0);
+    });
+
+    it("returns the @cdktn versions when @cdktf has no package", async () => {
+      mockProvidersMap();
+      mockNpm("/@cdktf/provider-awscc", 404, "Not found");
+      mockNpm(
+        "/@cdktn/provider-awscc",
+        200,
+        buildNpmResponse("1.2.0", "awscc", "^0.12.2", true, true),
+      );
+
+      await expect(
+        getPrebuiltProviderVersions(
+          ProviderConstraint.fromConfigEntry("hashicorp/awscc"),
+          "0.12.2",
+        ),
+      ).resolves.toEqual([{ name: "@cdktn/provider-awscc", version: "1.2.0" }]);
+    });
+
+    it("returns the @cdktf versions when @cdktn has no package", async () => {
+      mockProvidersMap();
+      mockNpm(
+        "/@cdktf/provider-awscc",
+        200,
+        buildNpmResponse("0.9.0", "awscc"),
+      );
+      mockNpm("/@cdktn/provider-awscc", 404, "Not found");
+
+      await expect(
+        getPrebuiltProviderVersions(
+          ProviderConstraint.fromConfigEntry("hashicorp/awscc"),
+          "0.12.2",
+        ),
+      ).resolves.toEqual([{ name: "@cdktf/provider-awscc", version: "0.9.0" }]);
+    });
+
+    it("returns null when neither scope has a package", async () => {
+      mockProvidersMap();
+      mockNpm("/@cdktf/provider-awscc", 404, "Not found");
+      mockNpm("/@cdktn/provider-awscc", 404, "Not found");
+
+      await expect(
+        getPrebuiltProviderVersions(
+          ProviderConstraint.fromConfigEntry("hashicorp/awscc"),
+          "0.12.2",
+        ),
+      ).resolves.toBeNull();
+    });
+
+    it("still fails when npm responds with 5xx", async () => {
+      mockProvidersMap();
+      mockNpm("/@cdktf/provider-awscc", 502, "Gateway error");
+
+      await expect(
+        getPrebuiltProviderVersions(
+          ProviderConstraint.fromConfigEntry("hashicorp/awscc"),
+          "0.12.2",
+        ),
+      ).rejects.toThrow(/Unexpected error/);
+    });
+
+    it("names packages after the provider rather than the map key", async () => {
+      mockProvidersMap();
+      mockNpm(
+        "/@cdktf/provider-google-beta",
+        200,
+        buildNpmResponse("13.0.0", "google-beta"),
+      );
+      mockNpm(
+        "/@cdktn/provider-google-beta",
+        200,
+        buildNpmResponse("14.0.0", "google-beta", "^0.12.2", true, true),
+      );
+
+      await expect(
+        getPrebuiltProviderVersions(
+          ProviderConstraint.fromConfigEntry("hashicorp/google-beta"),
+          "0.12.2",
+        ),
+      ).resolves.toEqual([
+        { name: "@cdktn/provider-google-beta", version: "14.0.0" },
+        { name: "@cdktf/provider-google-beta", version: "13.0.0" },
+      ]);
+    });
+  });
+
   describe("getNpmPackageName registry matching", () => {
     // Same shape as the published map: a constraint suffix, and some entries without a namespace.
     const mockProvidersMap = () =>
