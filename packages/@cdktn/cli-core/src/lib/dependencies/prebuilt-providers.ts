@@ -118,6 +118,20 @@ export async function getNpmPackageName(
   return useCdktn ? `@cdktn/provider-${name}` : `@cdktf/provider-${name}`;
 }
 
+// Restores the dashes a language package name drops or turns into underscores.
+export async function getListedNpmPackageName(
+  packageName: string,
+): Promise<string> {
+  const match = /^(@cdkt[fn]\/provider-)(.+)$/.exec(packageName);
+  if (!match) return packageName;
+
+  const providers = await getAllPrebuiltProviders();
+  const entry = providers[match[2].replace(/[-_]/g, "").toLowerCase()];
+  if (!entry) return packageName;
+
+  return match[1] + ProviderConstraint.fromConfigEntry(entry).name;
+}
+
 type PackageJson = {
   // has been introduced via https://github.com/hashicorp/cdktf-provider-project/pull/217
   cdktf?: {

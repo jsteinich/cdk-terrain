@@ -9,6 +9,7 @@ import {
 import { OPENTOFU_REGISTRY, TERRAFORM_REGISTRY } from "@cdktn/commons";
 import { ProviderConstraint } from "../../../lib/dependencies/dependency-manager";
 import {
+  getListedNpmPackageName,
   getNpmPackageName,
   getPrebuiltProviderVersions,
   getAllPrebuiltProviderVersions,
@@ -301,6 +302,26 @@ describe("prebuilt-providers", () => {
         { name: "@cdktn/provider-google-beta", version: "14.0.0" },
         { name: "@cdktf/provider-google-beta", version: "13.0.0" },
       ]);
+    });
+  });
+
+  describe("getListedNpmPackageName", () => {
+    it.each([
+      // C# (snake-cased from GoogleBeta) and Python dist names
+      ["@cdktn/provider-google_beta", "@cdktn/provider-google-beta"],
+      ["@cdktf/provider-google_beta", "@cdktf/provider-google-beta"],
+      ["@cdktn/provider-opentelekomcloud", "@cdktn/provider-opentelekomcloud"],
+    ])("resolves %s to %s", async (packageName, npmName) => {
+      mockAgent
+        .get("https://raw.githubusercontent.com")
+        .intercept({
+          path: /.*cdktn-repository-manager.*provider\.json/,
+          method: "GET",
+        })
+        .reply(200, { googlebeta: "hashicorp/google-beta@~> 8.0" });
+
+      await expect(getListedNpmPackageName(packageName)).resolves.toBe(npmName);
+      expect(mockAgent.pendingInterceptors()).toHaveLength(0);
     });
   });
 
