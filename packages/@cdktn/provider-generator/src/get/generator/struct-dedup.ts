@@ -77,24 +77,30 @@ function repoint(
   attributes: AttributeModel[],
   canonical: Map<Struct, Struct>,
   seen: Set<Struct>,
+  compatible: boolean,
 ): void {
   for (const attr of attributes) {
     const holder = structHolder(attr.type);
     if (!holder) continue;
     const target = canonical.get(holder.struct);
     if (target && target !== holder.struct) {
-      // readonly in TS only; every emitted name derives from `struct`
+      // readonly in TS only; every emitted name derives from `struct`.
+      // compat keeps the original as the input type callers name.
+      if (compatible) holder.declaredStruct ??= holder.struct;
       holder.struct = target;
     }
     const struct: Struct = holder.struct;
     if (seen.has(struct)) continue;
     seen.add(struct);
-    repoint(struct.attributes, canonical, seen);
+    repoint(struct.attributes, canonical, seen, compatible);
   }
 }
 
-/** @returns structs that are no longer referenced. */
-export function deduplicateStructs(attributes: AttributeModel[]): Set<Struct> {
+/** @returns structs that are no longer referenced (compat: interface-only). */
+export function deduplicateStructs(
+  attributes: AttributeModel[],
+  compatible = false,
+): Set<Struct> {
   const all = new Set<Struct>();
   collect(attributes, all);
 
@@ -121,6 +127,6 @@ export function deduplicateStructs(attributes: AttributeModel[]): Set<Struct> {
     }
   }
 
-  repoint(attributes, canonical, new Set());
+  repoint(attributes, canonical, new Set(), compatible);
   return removed;
 }

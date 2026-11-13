@@ -5,6 +5,16 @@ import {
   AttributeTypeModel,
   CollectionAttributeTypeModel,
 } from "./attribute-type-model";
+import type { Struct } from "./struct";
+
+/** The struct callers name for this attribute's type, when compatible dedup gave it shared machinery. */
+export function declaredStructOf(type: any): Struct | undefined {
+  for (let t = type; t; t = t.elementType) {
+    if (Object.prototype.hasOwnProperty.call(t, "struct"))
+      return t.declaredStruct;
+  }
+  return undefined;
+}
 
 export type GetterType =
   | { _type: "plain" }
@@ -235,7 +245,8 @@ export class AttributeModel {
     const types: string[] = [];
 
     if (this.isAssignable) {
-      types.push(attTypeStruct.name);
+      // the input type is the declared name; the canonical interface itself isn't referenced
+      types.push((declaredStructOf(this.type) ?? attTypeStruct).name);
       types.push(attTypeStruct.mapperName);
       types.push(attTypeStruct.hclMapperName);
     }
