@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { AttributeModel } from "./attribute-model";
 import { downcaseFirst } from "../../../util";
+import { genericCollectionKind } from "./generics";
 export class Struct {
   constructor(
     public readonly name: string,
@@ -104,7 +105,7 @@ export class Struct {
     ) {
       count += 1; // output reference
 
-      if (!this.isSingleItem) {
+      if (!this.isSingleItem && !genericCollectionKind(this)) {
         count += 1; // complex collection
       }
     }

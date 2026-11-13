@@ -3,6 +3,17 @@
 import { Struct } from "./struct";
 import { uppercaseFirst, downcaseFirst } from "../../../util";
 import { resolveStoredClassName } from "./supported-stored-classes";
+import { genericCollectionKind } from "./generics";
+
+function genericInitializer(
+  type: AttributeTypeModel,
+  args: string,
+): string | undefined {
+  const s = type.struct;
+  if (!s || !genericCollectionKind(s)) return undefined;
+  const cls = genericCollectionKind(s) === "list" ? "List" : "Map";
+  return `new cdktn.ComplexObject${cls}<${s.name}, ${s.outputReferenceName}>(${args}, ${s.outputReferenceName})`;
+}
 
 export interface AttributeTypeModel {
   readonly struct?: Struct; // complex object type contained within the type
@@ -257,7 +268,10 @@ export class ListAttributeTypeModel implements CollectionAttributeTypeModel {
       return `new ${this.elementType.storedClassType}OutputReference(this, "${name}")`;
     } else {
       if (this.isComplex) {
-        return `new ${this.storedClassType}(this, "${name}", false)`;
+        return (
+          genericInitializer(this, `this, "${name}", false`) ??
+          `new ${this.storedClassType}(this, "${name}", false)`
+        );
       } else {
         return `new cdktn.${this.resolvedStoredClass!.name}(this, "${name}", false)`;
       }
@@ -387,7 +401,10 @@ export class SetAttributeTypeModel implements CollectionAttributeTypeModel {
       return `new ${this.elementType.storedClassType}OutputReference(this, "${name}")`;
     } else {
       if (this.isComplex) {
-        return `new ${this.storedClassType}(this, "${name}", true)`;
+        return (
+          genericInitializer(this, `this, "${name}", true`) ??
+          `new ${this.storedClassType}(this, "${name}", true)`
+        );
       } else {
         return `new cdktn.${this.resolvedStoredClass!.name}(this, "${name}", true)`;
       }
@@ -492,7 +509,10 @@ export class MapAttributeTypeModel implements CollectionAttributeTypeModel {
 
   getStoredClassInitializer(name: string) {
     if (this.isComplex) {
-      return `new ${this.storedClassType}(this, "${name}")`;
+      return (
+        genericInitializer(this, `this, "${name}"`) ??
+        `new ${this.storedClassType}(this, "${name}")`
+      );
     } else {
       return `new cdktn.${this.resolvedStoredClass!.name}(this, "${name}")`;
     }

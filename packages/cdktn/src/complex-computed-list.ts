@@ -779,3 +779,63 @@ export class AnyListMap extends ComplexMap {
     );
   }
 }
+
+// TS-only generics experiment (not jsii-compatible)
+// eslint-disable-next-line jsdoc/require-jsdoc
+export class ComplexObjectList<
+  TValue,
+  TRef extends ComplexObject,
+> extends ComplexList {
+  public internalValue?: TValue[] | IResolvable;
+
+  constructor(
+    terraformResource: IInterpolatingParent,
+    terraformAttribute: string,
+    wrapsSet: boolean,
+    private readonly elementClass: new (
+      terraformResource: IInterpolatingParent,
+      terraformAttribute: string,
+      complexObjectIndex: number,
+      complexObjectIsFromSet: boolean,
+    ) => TRef,
+  ) {
+    super(terraformResource, terraformAttribute, wrapsSet);
+  }
+
+  public get(index: number): TRef {
+    return new this.elementClass(
+      this.terraformResource,
+      this.terraformAttribute,
+      index,
+      this.wrapsSet,
+    );
+  }
+}
+
+// eslint-disable-next-line jsdoc/require-jsdoc
+export class ComplexObjectMap<
+  TValue,
+  TRef extends ComplexObject,
+> extends ComplexMap {
+  public internalValue?: { [key: string]: TValue } | IResolvable;
+
+  constructor(
+    terraformResource: IInterpolatingParent,
+    terraformAttribute: string,
+    private readonly elementClass: new (
+      terraformResource: IInterpolatingParent,
+      terraformAttribute: string,
+      complexObjectKey: string,
+    ) => TRef,
+  ) {
+    super(terraformResource, terraformAttribute);
+  }
+
+  public get(key: string): TRef {
+    return new this.elementClass(
+      this.terraformResource,
+      this.terraformAttribute,
+      key,
+    );
+  }
+}

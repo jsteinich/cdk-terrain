@@ -6,6 +6,7 @@ import {
   CollectionAttributeTypeModel,
 } from "./attribute-type-model";
 import type { Struct } from "./struct";
+import { genericCollectionKind } from "./generics";
 
 /** The struct callers name for this attribute's type, when compatible dedup gave it shared machinery. */
 export function declaredStructOf(type: any): Struct | undefined {
@@ -251,7 +252,10 @@ export class AttributeModel {
       types.push(attTypeStruct.hclMapperName);
     }
 
-    if (
+    if (genericCollectionKind(attTypeStruct)) {
+      if (!types.includes(attTypeStruct.name)) types.push(attTypeStruct.name);
+      types.push(attTypeStruct.outputReferenceName);
+    } else if (
       !attTypeStruct.isSingleItem &&
       (attTypeStruct.nestingMode === "list" ||
         attTypeStruct.nestingMode === "set")

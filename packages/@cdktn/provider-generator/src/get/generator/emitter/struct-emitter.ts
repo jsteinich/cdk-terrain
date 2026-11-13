@@ -8,6 +8,7 @@ import * as path from "path";
 import { STRUCT_SHARDING_THRESHOLD } from "../models/resource-model";
 import { AttributeModel, declaredStructOf } from "../models/attribute-model";
 import { sanitizedComment } from "../sanitized-comments";
+import { genericCollectionKind } from "../models/generics";
 
 export class StructEmitter {
   attributesEmitter: AttributesEmitter;
@@ -282,7 +283,9 @@ export class StructEmitter {
 
     this.code.closeBlock();
 
-    if (
+    if (genericCollectionKind(struct)) {
+      return;
+    } else if (
       !struct.isSingleItem &&
       (struct.nestingMode === "list" || struct.nestingMode === "set")
     ) {
